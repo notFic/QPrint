@@ -10,7 +10,7 @@
             z-index: 1000;
         }
         .alert {
-            background-color: #f44336; /* red for errors */
+            background-color: #f44336; 
             color: white;
             padding: 12px 20px;
             margin-bottom: 10px;
@@ -52,8 +52,8 @@ window.onload = function() {
     alerts.forEach((alert) => {
         setTimeout(() => {
             alert.style.opacity = '0';
-            setTimeout(() => alert.remove(), 500); // remove after fade-out
-        }, 2000); // 3 seconds
+            setTimeout(() => alert.remove(), 500); 
+        }, 2000); 
     });
 };
 </script>
