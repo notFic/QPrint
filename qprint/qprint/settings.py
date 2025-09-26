@@ -128,6 +128,6 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "freezey789@gmail.com"  
 EMAIL_HOST_PASSWORD = "ayesvfkcfvcnhfrl"  
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = "freezey789@gmail.com"  
 
 

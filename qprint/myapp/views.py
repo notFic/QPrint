@@ -28,7 +28,7 @@ def register(request):
 
         send_mail(
             "Your QPrint Email Verification Code",
-            f"Your OTP is {otp} Hello this is your code! ngano man",
+            f"Hello,\n\nYour QPrint verification code is: {otp}",
             "QPrint <freezey789@gmail.com>",  
             [username],
             fail_silently=False,
