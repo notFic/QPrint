@@ -1,60 +1,142 @@
+{% load static %}
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Email Verification</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Email Verification | Q-Print Project</title>
     <style>
-        #message-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            display: flex;
+            background-color: #f8f9fa;
         }
-        .alert {
-            background-color: #f44336; 
-            color: white;
-            padding: 12px 20px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            opacity: 0.9;
-            transition: opacity 0.5s ease;
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            box-shadow: 0 0 50px rgba(0,0,0,0.06);
         }
-        .alert.success { background-color: #4CAF50; }
-        .alert.info { background-color: #2196F3; }
-        .alert.warning { background-color: #ff9800; }
+
+        .left-panel {
+            flex: 1;
+            background-image: url({% static 'qprint/images/background4.jpg' %});
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .left-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .right-panel {
+            flex: 1;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            max-width: 500px;
+            position: relative;
+            text-align: center;
+        }
+
+        .right-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -60px;
+            width: 150px;
+            height: 100%;
+            background: linear-gradient(
+                to left,
+                white 60%,
+                rgba(255,255,255,0.7) 75%,
+                rgba(255,255,255,0.3) 90%,
+                rgba(255,255,255,0) 100%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .right-panel > * { position: relative; z-index: 2; }
+
+        .logo-container { text-align: center; margin-bottom: 1.5rem; }
+        .logo { width: 90px; height: 90px; margin-bottom: 0.75rem; object-fit: contain; }
+        .project-title { color: #6b7280; font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem; }
+
+        .form-title { color: #1f2937; font-size: 1.8rem; font-weight: 600; margin-bottom: 1rem; }
+        .form-text { color: #555555; font-size: 0.95rem; margin-bottom: 1.5rem; max-width: 340px; }
+
+        .form-container { width: 100%; max-width: 360px; }
+
+        .submit-btn {
+            width: 100%;
+            background-color: #fbbf24; /* yellow */
+            color: #1f2937;
+            padding: 0.875rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .submit-btn:hover { background-color: #f59e0b; }
+        .submit-btn:active { background-color: #d97706; }
+
+        .login-link { text-align: center; margin-top: 1rem; color: #6b7280; font-size: 0.95rem; }
+        .login-link a { color: #3b82f6; text-decoration: none; font-weight: 500; }
+        .login-link a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .left-panel { height: 200px; flex: none; }
+            .right-panel { flex: 1; max-width: none; padding: 1.5rem; }
+            .right-panel::before {
+                background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 2%, white 8%);
+                left: 0; width: 100%; height: 60px; top: -0;
+            }
+            .form-title { font-size: 1.6rem; }
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <div class="left-panel"></div>
 
-<h2>Email Verification</h2>
-
-<div id="message-container">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert {{ message.tags }}">
-                {{ message }}
+        <div class="right-panel">
+            <div class="logo-container">
+                <img src="{% static 'qprint/images/logo.png' %}" alt="CIT-U Logo" class="logo">
+                <div class="project-title">Q-Print Project</div>
             </div>
-        {% endfor %}
-    {% endif %}
-</div>
 
-<form method="post">
-    {% csrf_token %}
-    <input type="text" name="otp" placeholder="Enter OTP" required>
-    <button type="submit">Verify</button>
-</form>
+            <h1 class="form-title">Email Verification</h1>
+            <p class="form-text">Please check your inbox for a verification link. If you didn’t receive it, you can request another below.</p>
 
-<script>
-window.onload = function() {
-    const alerts = document.querySelectorAll('#message-container .alert');
-    alerts.forEach((alert) => {
-        setTimeout(() => {
-            alert.style.opacity = '0';
-            setTimeout(() => alert.remove(), 500); 
-        }, 2000); 
-    });
-};
-</script>
+            <form method="POST" class="form-container">
+                {% csrf_token %}
+                <button type="submit" class="submit-btn">Resend Verification Email</button>
+            </form>
 
+            <div class="login-link">
+                <a href="{% url 'login' %}">Back to Login</a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
