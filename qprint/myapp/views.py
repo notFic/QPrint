@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from django.contrib import messages
+from django.contrib.auth import authenticate, login as auth_login   # Django’s login renamed
 
 def register(request):
     if request.method == "POST":
@@ -132,20 +133,27 @@ def verify(request):
 
 
 
-def login(request):
+def login(request):   # keep your view name as is
     if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
-
+        username = request.POST['username']
+        password = request.POST['password']
         user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect("/")  
-        else:
-            messages.error(request, "Invalid username or password")
-    return render(request, "myapp/login.html")
 
+        if user is not None:
+            auth_login(request, user)   # use the renamed function
+            if user.is_staff: # we need a way to identify whether a user is staff or not
+                return redirect('staff_dashboard')
+            else:
+                return redirect('staff_dashboard') #for now lets assume lang na everyone for the mean time is a staff, we just need to know if the redirection works
+        else:
+            return render(request, 'myapp/login.html', {'error': 'Invalid credentials'})
+
+    return render(request, 'myapp/login.html')
 
 def logout(request):
     logout(request)
     return redirect("login")
+
+
+def staff_dashboard(request):
+    return render(request, "myapp/staff_dashboard.html")

@@ -1,0 +1,195 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Q-Print Admin Dashboard — Fixed</title>
+  <link rel="stylesheet" href="{% static 'qprint/css/staff_dashboard.css' %}">
+</head>
+<body>
+  <!-- Fixed Header Bar -->
+  <div class="header-bar" role="banner">
+    <!-- Background image -->
+    <img src="{% static 'images/header.jpg' %}" alt="" aria-hidden="true">
+    <button class="menu-btn" aria-label="Toggle sidebar" aria-controls="sidebar">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+    <div class="header-title">Q-Print</div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar" role="complementary" aria-label="Sidebar navigation">
+    <div class="sidebar-header">
+      <h2>Menu</h2>
+      <button class="close-btn" aria-label="Close sidebar">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="sidebar-content">
+      <p>Sidebar content goes here. Add navigation links, settings, or other controls as needed.</p>
+    </div>
+  </div>
+
+  <!-- Backdrop for sidebar -->
+  <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+
+  <div class="container" role="main">
+    <h1>Welcome, Staff/Admin</h1>
+
+    <!-- Stats row -->
+    <div class="stats-grid" aria-hidden="false">
+      <div class="stat-card" role="region" aria-label="Pending print jobs">
+        <div class="stat-icon" aria-hidden="true">
+          <!-- printer icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 9v6h12V9M9 21h6M6 5h12v4H6z"></path></svg>
+        </div>
+        <div class="stat-content">
+          <h3>Pending Print Jobs</h3>
+          <p id="pending-print-count">12</p>
+        </div>
+      </div>
+
+      <div class="stat-card" role="region" aria-label="Pending payments">
+        <div class="stat-icon" aria-hidden="true">
+          <!-- invoice icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M7 7h10M7 11h10M7 15h6M21 8v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"></path></svg>
+        </div>
+        <div class="stat-content">
+          <h3>Pending Payments</h3>
+          <p id="pending-pay-count">5</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content grid (center / right) -->
+    <div class="content-grid" role="region" aria-label="Dashboard content">
+      <div class="center-col">
+        <div class="card" aria-labelledby="queueTitle">
+          <h2 id="queueTitle">Print Job Queue</h2>
+
+          <div class="search-box" role="search" aria-label="Search print jobs">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
+            <input id="jobSearch" placeholder="Search by student or filename..." aria-label="Search print jobs">
+          </div>
+
+          <table aria-describedby="queueTitle" role="table">
+            <thead>
+              <tr><th>Student</th><th>File</th><th>Submitted</th></tr>
+            </thead>
+            <tbody id="jobsTbody">
+              <tr><td>Jane Doe</td><td>Assignment1.pdf</td><td>0:30 AM</td></tr>
+              <tr><td>John Smith</td><td>Thesis_Final.docx</td><td>1:15 AM</td></tr>
+              <tr><td>Emily Johnson</td><td>Presentation.pptx</td><td>2:00 AM</td></tr>
+              <tr><td>Michael Brown</td><td>Report.pdf</td><td>2:45 AM</td></tr>
+              <tr><td>Sarah Davis</td><td>Essay.docx</td><td>3:30 AM</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="card" aria-labelledby="paymentsTitle">
+          <h2 id="paymentsTitle">Payment / Invoice Verification</h2>
+
+          <div class="payment-list" id="paymentList">
+            <div class="payment-item" data-user="John Smith">
+              <div class="payment-name">John Smith</div>
+              <div>
+                <span class="badge badge-pending">Pending</span>
+                <button class="confirm-btn" type="button">Confirm</button>
+              </div>
+            </div>
+
+            <div class="payment-item" data-user="Emily Jones">
+              <div class="payment-name">Emily Jones</div>
+              <div>
+                <span class="badge badge-pending">Pending</span>
+                <button class="confirm-btn" type="button">Confirm</button>
+              </div>
+            </div>
+
+            <div class="payment-item" data-user="Michael Brown">
+              <div class="payment-name">Michael Brown</div>
+              <div>
+                <span class="badge badge-pending">Pending</span>
+                <button class="confirm-btn" type="button">Confirm</button>
+              </div>
+            </div>
+
+            <div class="payment-item" data-user="Sarah Davis">
+              <div class="payment-name">Sarah Davis</div>
+              <div>
+                <span class="badge badge-pending">Pending</span>
+                <button class="confirm-btn" type="button">Confirm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Sidebar toggle functionality
+    (function(){
+      const menuBtn = document.querySelector('.menu-btn');
+      const sidebar = document.querySelector('.sidebar');
+      const closeBtn = document.querySelector('.close-btn');
+      const backdrop = document.querySelector('.backdrop');
+
+      function toggleSidebar() {
+        sidebar.classList.toggle('open');
+        backdrop.classList.toggle('active');
+      }
+
+      menuBtn.addEventListener('click', toggleSidebar);
+      closeBtn.addEventListener('click', toggleSidebar);
+      backdrop.addEventListener('click', toggleSidebar);
+    })();
+
+    // Search filter for jobs table (matches student or filename)
+    (function(){
+      const input = document.getElementById('jobSearch');
+      const tbody = document.getElementById('jobsTbody');
+
+      input.addEventListener('input', function(){
+        const q = input.value.trim().toLowerCase();
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(r=>{
+          const text = r.textContent.toLowerCase();
+          r.style.display = text.includes(q) ? '' : 'none';
+        });
+      });
+    })();
+
+    // Payment confirm button: toggles badge & disables button
+    (function(){
+      const payList = document.getElementById('paymentList');
+      payList.addEventListener('click', function(e){
+        if (!e.target.classList.contains('confirm-btn')) return;
+        const btn = e.target;
+        const item = btn.closest('.payment-item');
+        const badge = item.querySelector('.badge');
+        // change UI to confirmed
+        badge.classList.remove('badge-pending');
+        badge.classList.add('badge-confirmed');
+        badge.textContent = 'Confirmed';
+        btn.disabled = true;
+        btn.textContent = 'Confirmed';
+        // Update pending count (example)
+        const pendingCountEl = document.getElementById('pending-pay-count');
+        let n = parseInt(pendingCountEl.textContent,10)||0;
+        if (n>0) pendingCountEl.textContent = (n-1).toString();
+      });
+    })();
+  </script>
+</body>
+</html>
