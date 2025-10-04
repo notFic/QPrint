@@ -9,8 +9,12 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+import os
 
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -75,8 +79,15 @@ WSGI_APPLICATION = 'qprint.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'postgres'),        # From .env file
+        'USER': os.getenv('DB_USER', 'postgres'),        # From .env file
+        'PASSWORD': os.getenv('DB_PASSWORD'),            # From .env file
+        'HOST': os.getenv('DB_HOST'),                    # From .env file
+        'PORT': os.getenv('DB_PORT', '5432'),            # From .env file
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 
@@ -126,9 +137,9 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "freezey789@gmail.com"  
-EMAIL_HOST_PASSWORD = "ayesvfkcfvcnhfrl"  
-DEFAULT_FROM_EMAIL = "freezey789@gmail.com"  
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'freezey789@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # From .env file
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'freezey789@gmail.com')
 
 # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 # EMAIL_HOST = "smtp.office365.com"
@@ -143,3 +154,9 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
 ]
 
+# Supabase Configuration
+SUPABASE_CONFIG = {
+    'url': os.getenv('SUPABASE_URL'),
+    'anon_key': os.getenv('SUPABASE_ANON_KEY'),
+    'service_key': os.getenv('SUPABASE_SERVICE_KEY'),
+}

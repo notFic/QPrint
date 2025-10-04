@@ -2,9 +2,10 @@ import random
 import time
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.core.mail import send_mail
 from django.contrib import messages
+from .supabase_client import get_supabase
 
 def register(request):
     if request.method == "POST":
@@ -24,7 +25,7 @@ def register(request):
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
             return render(request, "myapp/register.html")
-        
+
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email already used")
             return render(request, "myapp/register.html")
@@ -34,7 +35,7 @@ def register(request):
         send_mail(
             "Your QPrint Email Verification Code",
             f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, ignore this email.",
-            "QPrint <freezey789@gmail.com>",  
+            "QPrint <freezey789@gmail.com>",
             [email],
             fail_silently=False,
         )
@@ -43,6 +44,7 @@ def register(request):
         request.session["username"] = username
         request.session["email"] = email
         request.session["password"] = password
+        request.session["otp_created"] = time.time()
 
         return redirect("verify")
 
@@ -100,7 +102,6 @@ def verify(request):
 
         if otp_created_ts:
             if time.time() - otp_created_ts > OTP_EXPIRE_SECONDS:
-
                 request.session.pop("otp", None)
                 request.session.pop("otp_created", None)
                 messages.error(request, "Verification code expired. Please request a new code.")
@@ -118,8 +119,31 @@ def verify(request):
                 messages.error(request, "Email already registered. Please login instead.")
                 return redirect("login")
 
-            User.objects.create_user(username=username, email=email, password=password)
+            # Create Django user
+            user = User.objects.create_user(username=username, email=email, password=password)
 
+            # Store user in Supabase profiles table
+            try:
+                supabase = get_supabase()
+                profile_data = {
+                    'django_user_id': user.id,
+                    'username': username,
+                    'email': email,
+                    'created_at': 'now()'
+                }
+                response = supabase.table('profiles').insert(profile_data).execute()
+
+                if hasattr(response, 'error') and response.error:
+                    messages.warning(request, "Account created but Supabase sync had issues.")
+                else:
+                    messages.success(request, "Account created successfully with Supabase integration!")
+
+            except Exception as e:
+                # Log the error but don't fail the registration
+                print(f"Supabase integration error: {e}")
+                messages.success(request, "Account created successfully! (Supabase sync failed)")
+
+            # Clean up session
             for k in ("username", "email", "password", "otp", "otp_last_sent", "otp_created"):
                 request.session.pop(k, None)
 
@@ -131,7 +155,6 @@ def verify(request):
     return render(request, "myapp/verify.html")
 
 
-
 def login(request):
     if request.method == "POST":
         username = request.POST["username"]
@@ -139,13 +162,37 @@ def login(request):
 
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            login(request, user)
-            return redirect("/")  
+            auth_login(request, user)
+
+            # Log login activity in Supabase
+            try:
+                supabase = get_supabase()
+                login_data = {
+                    'user_id': user.id,
+                    'login_time': 'now()'
+                }
+                supabase.table('login_activity').insert(login_data).execute()
+            except Exception as e:
+                print(f"Supabase activity logging error: {e}")
+
+            return redirect("/")
         else:
             messages.error(request, "Invalid username or password")
     return render(request, "myapp/login.html")
 
 
 def logout(request):
-    logout(request)
+    # Log logout activity in Supabase
+    if request.user.is_authenticated:
+        try:
+            supabase = get_supabase()
+            logout_data = {
+                'user_id': request.user.id,
+                'logout_time': 'now()'
+            }
+            supabase.table('logout_activity').insert(logout_data).execute()
+        except Exception as e:
+            print(f"Supabase activity logging error: {e}")
+
+    auth_logout(request)
     return redirect("login")
