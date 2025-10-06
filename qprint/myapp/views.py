@@ -7,7 +7,6 @@ from django.core.mail import send_mail
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login   # Django’s login renamed
 from django.http import HttpResponseForbidden
-from django.contrib.auth.decorators import login_required
 
 # myapp/views.py
 
@@ -163,14 +162,13 @@ def login_view(request):   # keep your view name as is
 
 def logout_view(request):
     logout(request)
-    return redirect("login")
+    return redirect("login_view")
 
-@login_required
+
 def staff_dashboard(request):
     if request.user.email not in STAFF_EMAILS:
         return HttpResponseForbidden("Access denied.")
     return render(request, "myapp/staff_dashboard.html")
 
-@login_required
 def student_dashboard(request):
     return render(request, "myapp/student_dashboard.html")
