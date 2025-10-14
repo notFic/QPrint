@@ -77,19 +77,16 @@ WSGI_APPLICATION = 'qprint.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import dj_database_url
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'postgres'),        # From .env file
-        'USER': os.getenv('DB_USER', 'postgres'),        # From .env file
-        'PASSWORD': os.getenv('DB_PASSWORD'),            # From .env file
-        'HOST': os.getenv('DB_HOST'),                    # From .env file
-        'PORT': os.getenv('DB_PORT', '5432'),            # From .env file
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
+
 
 
 # Password validation
@@ -137,17 +134,11 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'freezey789@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # From .env file
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'freezey789@gmail.com')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.office365.com"
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = "qprintteam@outlook.com"
-# EMAIL_HOST_PASSWORD = "wxrlniuqhycathfm"
-# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",

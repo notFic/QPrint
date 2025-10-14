@@ -14,9 +14,9 @@ def register(request):
         password = request.POST["password"]
         confirm = request.POST["confirm_password"]
 
-        # if not username.endswith("@cit.edu"):
-        #     messages.error(request, "Email must end with @cit.edu")
-        #     return render(request, "myapp/register.html")
+        if not email.endswith("@gmail.com"):
+            messages.error(request, "Email must end with @gmail.com")
+            return render(request, "myapp/register.html")
 
         if password != confirm:
             messages.error(request, "Passwords do not match")
@@ -119,10 +119,8 @@ def verify(request):
                 messages.error(request, "Email already registered. Please login instead.")
                 return redirect("login")
 
-            # Create Django user
             user = User.objects.create_user(username=username, email=email, password=password)
 
-            # Store user in Supabase profiles table
             try:
                 supabase = get_supabase()
                 profile_data = {
@@ -139,11 +137,9 @@ def verify(request):
                     messages.success(request, "Account created successfully with Supabase integration!")
 
             except Exception as e:
-                # Log the error but don't fail the registration
                 print(f"Supabase integration error: {e}")
                 messages.success(request, "Account created successfully! (Supabase sync failed)")
 
-            # Clean up session
             for k in ("username", "email", "password", "otp", "otp_last_sent", "otp_created"):
                 request.session.pop(k, None)
 
@@ -164,7 +160,6 @@ def login(request):
         if user is not None:
             auth_login(request, user)
 
-            # Log login activity in Supabase
             try:
                 supabase = get_supabase()
                 login_data = {
@@ -182,7 +177,6 @@ def login(request):
 
 
 def logout(request):
-    # Log logout activity in Supabase
     if request.user.is_authenticated:
         try:
             supabase = get_supabase()
