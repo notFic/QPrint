@@ -16,6 +16,8 @@ body {
     box-shadow: 0 0 50px rgba(0,0,0,0.06);
 }
 
+
+
 .left-panel {
     flex: 1;
     background-image: url("../images/background4.jpg");
@@ -113,3 +115,28 @@ body {
     }
     .form-title { font-size: 1.6rem; }
 }
+
+.messages {
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.error,
+.error-message {
+    color: #dc2626; 
+    margin-bottom: 20px;
+}
+
+.success {
+    color: #16a34a; 
+    margin-bottom: 20px;
+}
+
+.warning {
+    color: #ca8a04; 
+    margin-bottom: 20px;
+}
+
+
