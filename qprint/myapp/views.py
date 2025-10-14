@@ -153,13 +153,40 @@ def verify(request):
 
 def login(request):
     if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
+        username = request.POST.get("username")
+        password = request.POST.get("password")
 
+        # Step 1: Try to authenticate locally
         user = authenticate(request, username=username, password=password)
+
+        # Step 2: If user doesn't exist locally, try to fetch from Supabase
+        if user is None and not User.objects.filter(username=username).exists():
+            try:
+                supabase = get_supabase()
+                data = supabase.table('profiles').select('*').eq('username', username).execute()
+
+                if data.data:
+                    profile = data.data[0]
+
+                    # Create Django user with the provided password
+                    user = User.objects.create_user(
+                        username=profile['username'],
+                        email=profile.get('email', ''),
+                        password=password
+                    )
+                    print("✅ Created local Django user from Supabase record.")
+
+                    # Re-authenticate the new user
+                    user = authenticate(request, username=username, password=password)
+
+            except Exception as e:
+                print(f"⚠️ Supabase sync failed: {e}")
+
+        # Step 3: Proceed if authentication successful
         if user is not None:
             auth_login(request, user)
 
+            # Step 4: Log to Supabase
             try:
                 supabase = get_supabase()
                 login_data = {
@@ -168,11 +195,17 @@ def login(request):
                 }
                 supabase.table('login_activity').insert(login_data).execute()
             except Exception as e:
-                print(f"Supabase activity logging error: {e}")
+                print(f"⚠️ Supabase activity logging error: {e}")
 
-            return redirect("/")
+            # Step 5: Redirect based on role
+            if user.is_staff:
+                return redirect('staff_dashboard')
+            else:
+                return redirect('student_dashboard')
+
         else:
             messages.error(request, "Invalid username or password")
+
     return render(request, "myapp/login.html")
 
 
@@ -190,3 +223,9 @@ def logout(request):
 
     auth_logout(request)
     return redirect("login")
+
+def staff_dashboard(request):
+    return render(request, "myapp/staff_dashboard.html")
+
+def student_dashboard(request):
+    return render(request, "myapp/student_dashboard.html")
