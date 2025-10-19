@@ -16,16 +16,14 @@ def send_password_reset_email(request, email):
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        return False  # or handle it silently
+        return False  
 
-    # Generate token and UID
+    
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-    # Build reset link (e.g., /reset-password/<uid>/<token>/)
     reset_link = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
 
-    # Send the email
     subject = "Password Reset Request"
     message = (
         f"Hello {user.username},\n\n"
@@ -242,7 +240,7 @@ def reset_password(request, uidb64, token):
             new_password = request.POST.get("password")
             user.set_password(new_password)
             user.save()
-            return redirect('login')  # redirect to login after reset
+            return redirect('login')  
         return render(request, 'myapp/reset_password_form.html', {'validlink': True})
     else:
         return render(request, 'myapp/reset_password_form.html', {'validlink': False})
