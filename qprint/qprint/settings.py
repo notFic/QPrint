@@ -149,3 +149,5 @@ SUPABASE_CONFIG = {
     'anon_key': os.getenv('SUPABASE_ANON_KEY'),
     'service_key': os.getenv('SUPABASE_SERVICE_KEY'),
 }
+
+LOGIN_URL = 'login'
