@@ -1,0 +1,62 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Email Verification | Q-Print Project</title>
+    <link rel="stylesheet" href="{% static 'qprint/css/verify.css' %}">
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel"></div>
+
+        <div class="right-panel">
+            <div class="logo-container">
+                <img src="{% static 'qprint/images/logo.png' %}" alt="CIT-U Logo" class="logo">
+                <div class="project-title">Q-Print Project</div>
+            </div>
+
+            <h1 class="form-title">Email Verification</h1>
+
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="
+                            {% if message.tags %}
+                                {{ message.tags }}
+                            {% else %}
+                                error-message
+                            {% endif %}
+                        ">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+
+            <form method="POST" class="form-container">
+                {% csrf_token %}
+                <input
+                    type="text"
+                    name="otp"
+                    placeholder="Enter verification code"
+                    class="form-input"
+                    required
+                >
+                <button type="submit" class="submit-btn">Verify Email</button>
+            </form>
+
+            <div class="login-link">
+                <a href="{% url 'verify' %}?resend=1">Send verification email again</a>
+            </div>
+
+            <div class="login-link">
+                <a href="{% url 'register' %}">Back to Register</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
