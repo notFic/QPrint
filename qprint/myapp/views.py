@@ -233,6 +233,9 @@ def login(request):
 
         else:
             messages.error(request, "Invalid username or password")
+            return render(request, "myapp/login.html", {
+                "username": username
+            })
 
     return render(request, "myapp/login.html")
 
