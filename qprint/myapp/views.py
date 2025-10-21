@@ -6,6 +6,47 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.core.mail import send_mail
 from django.contrib import messages
 from .supabase_client import get_supabase
+from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+
+def send_password_reset_email(request, email):
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return False  
+
+    
+    token = default_token_generator.make_token(user)
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+    reset_link = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
+
+    subject = "Password Reset Request"
+    message = (
+        f"Hello {user.username},\n\n"
+        f"You requested a password reset for your QPrint account.\n\n"
+        f"Click the link below to reset your password:\n{reset_link}\n\n"
+        f"If you didn’t request this, please ignore this email."
+    )
+
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+
+    return True
+
+def _send_otp_email(email, otp):
+    send_mail(
+        "Your QPrint Email Verification Code",
+        f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, ignore this email.",
+        "QPrint <qprintapp@gmail.com>",  
+        [email],
+        fail_silently=False,
+    )
 
 def register(request):
     if request.method == "POST":
@@ -16,29 +57,54 @@ def register(request):
 
         if not email.endswith("@gmail.com"):
             messages.error(request, "Email must end with @gmail.com")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if password != confirm:
             messages.error(request, "Passwords do not match")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
+        
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email already used")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         otp = str(random.randint(100000, 999999))
 
-        send_mail(
-            "Your QPrint Email Verification Code",
-            f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, ignore this email.",
-            "QPrint <freezey789@gmail.com>",
-            [email],
-            fail_silently=False,
-        )
+        _send_otp_email(email, otp)
 
         request.session["otp"] = otp
         request.session["username"] = username
@@ -52,15 +118,6 @@ def register(request):
 
 OTP_EXPIRE_SECONDS = 10 * 60   
 RESEND_COOLDOWN_SECONDS = 60  
-
-def _send_otp_email(email, otp):
-    send_mail(
-        "Your QPrint Email Verification Code",
-        f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, ignore this email.",
-        "QPrint <freezey789@gmail.com>",  
-        [email],
-        fail_silently=False,
-    )
 
 def verify(request):
     if not (request.session.get("username") and request.session.get("email") and request.session.get("password")):
@@ -177,6 +234,9 @@ def login(request):
 
         else:
             messages.error(request, "Invalid username or password")
+            return render(request, "myapp/login.html", {
+                "username": username
+            })
 
     return render(request, "myapp/login.html")
 
@@ -194,11 +254,50 @@ def logout(request):
         except Exception as e:
             print(f"Supabase activity logging error: {e}")
 
-    auth_logout(request)
+        auth_logout(request)
+        messages.success(request, "You have been logged out successfully.")
+    else:
+        messages.info(request, "You were not logged in.")
+
     return redirect("login")
 
+def forgot_password(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        if send_password_reset_email(request, email):
+            return render(request, 'myapp/password_reset_sent.html')
+    return render(request, 'myapp/forgot_password.html')
+
+
+def reset_password(request, uidb64, token):
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == "POST":
+            new_password = request.POST.get("password")
+            try:
+                validate_password(new_password, user)
+            except ValidationError as e:
+                messages.error(request, e.messages[0])
+                return render(request, 'myapp/reset_password_form.html', {'validlink': True})
+
+            user.set_password(new_password)
+            user.save()
+            return redirect('login')  
+        return render(request, 'myapp/reset_password_form.html', {'validlink': True})
+    else:
+        return render(request, 'myapp/reset_password_form.html', {'validlink': False})
+
+@login_required(login_url='login')
 def staff_dashboard(request):
+    if not request.user.is_staff:
+        return redirect('student_dashboard')
     return render(request, "myapp/staff_dashboard.html")
 
+@login_required(login_url='login')
 def student_dashboard(request):
     return render(request, "myapp/student_dashboard.html")
