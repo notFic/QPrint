@@ -12,6 +12,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 
 def send_password_reset_email(request, email):
@@ -253,7 +254,11 @@ def logout(request):
         except Exception as e:
             print(f"Supabase activity logging error: {e}")
 
-    auth_logout(request)
+        auth_logout(request)
+        messages.success(request, "You have been logged out successfully.")
+    else:
+        messages.info(request, "You were not logged in.")
+
     return redirect("login")
 
 def forgot_password(request):
@@ -287,8 +292,12 @@ def reset_password(request, uidb64, token):
     else:
         return render(request, 'myapp/reset_password_form.html', {'validlink': False})
 
+@login_required(login_url='login')
 def staff_dashboard(request):
+    if not request.user.is_staff:
+        return redirect('student_dashboard')
     return render(request, "myapp/staff_dashboard.html")
 
+@login_required(login_url='login')
 def student_dashboard(request):
     return render(request, "myapp/student_dashboard.html")
