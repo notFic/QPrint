@@ -11,6 +11,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 def send_password_reset_email(request, email):
     try:
@@ -54,19 +56,50 @@ def register(request):
 
         if not email.endswith("@gmail.com"):
             messages.error(request, "Email must end with @gmail.com")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if password != confirm:
             messages.error(request, "Passwords do not match")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
+        
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email already used")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         otp = str(random.randint(100000, 999999))
 
@@ -238,6 +271,12 @@ def reset_password(request, uidb64, token):
     if user is not None and default_token_generator.check_token(user, token):
         if request.method == "POST":
             new_password = request.POST.get("password")
+            try:
+                validate_password(new_password, user)
+            except ValidationError as e:
+                messages.error(request, e.messages[0])
+                return render(request, 'myapp/reset_password_form.html', {'validlink': True})
+
             user.set_password(new_password)
             user.save()
             return redirect('login')  
