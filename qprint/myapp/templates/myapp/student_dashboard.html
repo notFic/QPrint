@@ -10,240 +10,169 @@
 <body>
 
   <div class="header-bar" role="banner">
-    <img src="{% static 'qprint/images/header.jpg' %}" alt="" aria-hidden="true">
+    <img src="{% static 'qprint/images/header.jpg' %}" alt="" aria-hidden="true" class="header-background">
     <button class="menu-btn" aria-label="Toggle sidebar" aria-controls="sidebar">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
       </svg>
     </button>
+    <img src="{% static 'qprint/images/logo.png' %}" alt="QPrint Logo" class="header-logo">
     <div class="header-title">Q-Print</div>
   </div>
 
-  <!-- Sidebar -->
   <div class="sidebar" id="sidebar" role="complementary" aria-label="Sidebar navigation">
     <div class="sidebar-header">
       <h2>Menu</h2>
       <button class="close-btn" aria-label="Close sidebar">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
     </div>
     <div class="sidebar-content">
-      <a href="#print-jobs">Print Jobs</a>
-      <a href="#payments">Payments</a>
       <a href="#profile">Profile</a>
-      <a href="#support">Support</a>
-      <a href="#support">Support</a>
-      <hr class="logout-divider">
-      <a href="{% url 'logout' %}" class="logout-link">Logout</a>
+      <a href="#settings">Settings</a>
+      <a href="#support">Contact Support</a>
+      <a href="#terms">Terms of Service</a>
+      <button type="button" class="logout-link" id="logout-btn">Log Out</button>
     </div>
   </div>
 
-  <!-- Backdrop for sidebar -->
   <div class="backdrop" id="backdrop" aria-hidden="true"></div>
 
-  <div class="container" role="main">
-    <h1>Welcome, Jane Doe</h1>
-
-    <!-- Stats row -->
-    <div class="stats-grid" aria-hidden="false">
-      <div class="stat-card" role="region" aria-label="Pending print jobs">
-        <div class="stat-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 9v6h12V9M9 21h6M6 5h12v4H6z"></path>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <h3>Pending Print Jobs</h3>
-          <p id="pending-print-count">2</p>
-        </div>
-      </div>
-      <div class="stat-card" role="region" aria-label="Unpaid invoices">
-        <div class="stat-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M7 7h10M7 11h10M7 15h6M21 8v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"></path>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <h3>Unpaid Invoices</h3>
-          <p id="unpaid-invoice-count">1</p>
-        </div>
+  <div class="logout-modal" id="logout-modal">
+    <div class="modal-box">
+      <h2>Confirm Log Out</h2>
+      <p>Are you sure you want to log out?</p>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel-btn" id="cancel-logout-btn">Cancel</button>
+        <a href="{% url 'logout' %}" class="modal-btn confirm-btn">Yes, Log Out</a>
       </div>
     </div>
+  </div>
 
-    <!-- Main content grid (left / right) -->
-    <div class="content-grid" role="region" aria-label="Dashboard content">
-      <div class="center-col">
-        <div class="card" aria-labelledby="printJobTitle">
-          <h2 id="printJobTitle">Submit Print Job</h2>
-          <div class="file-upload">
-            <label for="fileInput">Upload File</label>
-            <input type="file" id="fileInput" accept=".pdf,.docx,.pptx" aria-label="Upload print file">
-            <div class="preview-box" id="previewBox"></div>
+  <div class="container" role="main">
+    <h1>Welcome, Student {{ request.user.username|capfirst }}</h1>
+    <div class="content-grid">
+        <div class="left-col">
+            <div class="card">
+              <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <h2>File Submission</h2>
+                <p>Upload your document and specify print details.</p>
+
+                {% if messages %}
+                  <div class="messages">
+                    {% for message in messages %}
+                      <p class="error-message">{{ message }}</p>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                <div class="file-upload">
+                  <label for="fileInput">Choose PDF</label>
+                  <input type="file" id="fileInput" name="print_file" accept=".pdf" onchange="this.form.submit()">
+                </div>
+
+                {% if file_name %}
+                  <div class="filename-display">
+                    <p><strong>Selected File:</strong></p>
+                    <span>{{ file_name }}</span>
+                  </div>
+                {% endif %}
+
+                <div class="print-options">
+                  <div class="form-group">
+                    <label for="pages">Number of Pages</label>
+                    <input type="number" id="pages" name="pages" placeholder="e.g., 10" value="{{ form_data.pages }}">
+                  </div>
+                  <div class="form-group">
+                    <label for="paper_size">Paper Size</label>
+                    <select id="paper_size" name="paper_size">
+                      <option value="" {% if not form_data.paper_size %}selected{% endif %} disabled>Select a size</option>
+                      <option value="A4" {% if form_data.paper_size == 'A4' %}selected{% endif %}>A4 (8.27" x 11.69")</option>
+                      <option value="Letter" {% if form_data.paper_size == 'Letter' %}selected{% endif %}>Letter (8.5" x 11")</option>
+                      <option value="Long" {% if form_data.paper_size == 'Long' %}selected{% endif %}>Long (8.5" x 13")</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="color_option">Color Option</label>
+                    <select id="color_option" name="color_option">
+                      <option value="" {% if not form_data.color_option %}selected{% endif %} disabled>Select a color</option>
+                      <option value="bw" {% if form_data.color_option == 'bw' %}selected{% endif %}>Black & White</option>
+                      <option value="color" {% if form_data.color_option == 'color' %}selected{% endif %}>Color</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" name="action" value="calculate" class="secondary-btn">Calculate Cost</button>
+
+                {% if total_cost %}
+                  <div class="total-cost-display">
+                    <h3>Total Estimated Cost:</h3>
+                    <span>₱{{ total_cost }}</span>
+                  </div>
+                {% endif %}
+
+                <button type="submit" name="action" value="submit_job" class="primary-btn">Submit Print Job</button>
+              </form>
+            </div>
           </div>
-          <div class="print-settings">
-            <select id="colorSetting" aria-label="Select color option">
-              <option value="bw">Black & White</option>
-              <option value="color">Color</option>
-            </select>
-            <input type="number" id="pageCount" min="1" placeholder="Number of pages" aria-label="Number of pages">
+
+          <div class="right-col">
+            <div class="card">
+              <h2>File Preview</h2>
+              <div class="preview-box">
+                {% if pdf_data %}
+                  <iframe class="pdf-iframe" src="data:application/pdf;base64,{{ pdf_data }}" title="PDF Preview"></iframe>
+                {% else %}
+                  <div class="preview-placeholder"><p>Upload a PDF to see the preview here</p></div>
+                {% endif %}
+              </div>
+            </div>
           </div>
-          <button class="submit-btn" type="button">Submit Print Job</button>
-        </div>
-        <div class="card" aria-labelledby="jobHistoryTitle">
-          <h2 id="jobHistoryTitle">Print Job History</h2>
-          <div class="search-box" role="search" aria-label="Search print jobs">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/>
-            </svg>
-            <input id="jobSearch" placeholder="Search by filename..." aria-label="Search print jobs">
-          </div>
-          <table aria-describedby="jobHistoryTitle" role="table">
-            <thead>
-              <tr><th>File</th><th>Submitted</th><th>Status</th><th>Action</th></tr>
-            </thead>
-            <tbody id="jobsTbody">
-              <tr>
-                <td>Assignment1.pdf</td>
-                <td>2025-10-07 0:30 AM</td>
-                <td><span class="badge badge-pending">Pending</span></td>
-                <td><button class="cancel-btn" data-job-id="1">Cancel</button></td>
-              </tr>
-              <tr>
-                <td>Project.docx</td>
-                <td>2025-10-06 3:15 PM</td>
-                <td><span class="badge badge-completed">Completed</span></td>
-                <td></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="right-col">
-        <div class="card" aria-labelledby="profileTitle">
-          <h2 id="profileTitle">Profile</h2>
-          <div class="profile-info">
-            <p><strong>Name:</strong> Jane Doe</p>
-            <p><strong>Student ID:</strong> 123456</p>
-            <p><strong>Account Status:</strong> Enrolled</p>
-            <p><a href="#update-password">Update Password</a></p>
-            <p><a href="#terms">View Terms and Policies</a></p>
-            <p><a href="#support">Contact Support</a></p>
-          </div>
-        </div>
-        <div class="card" aria-labelledby="paymentsTitle">
-          <h2 id="paymentsTitle">Payments & Invoices</h2>
-          <div class="file-upload">
-            <label for="paymentProof">Upload Payment Proof</label>
-            <input type="file" id="paymentProof" accept="image/*,.pdf" aria-label="Upload payment proof">
-          </div>
-          <div class="payment-info">
-            <h3>Invoices</h3>
-            <table aria-describedby="paymentsTitle" role="table">
-              <thead>
-                <tr><th>Invoice ID</th><th>Amount</th><th>Status</th><th>Action</th></tr>
-              </thead>
-              <tbody id="invoicesTbody">
-                <tr>
-                  <td>INV-001</td>
-                  <td>$5.00</td>
-                  <td><span class="badge badge-pending">Pending</span></td>
-                  <td><a href="#view-invoice">View</a></td>
-                </tr>
-                <tr>
-                  <td>INV-002</td>
-                  <td>$3.50</td>
-                  <td><span class="badge badge-completed">Paid</span></td>
-                  <td><a href="#download-receipt">Download Receipt</a></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
   <script>
-    // Sidebar toggle functionality
+    // Sidebar toggle
     (function(){
       const menuBtn = document.querySelector('.menu-btn');
       const sidebar = document.querySelector('.sidebar');
       const closeBtn = document.querySelector('.close-btn');
       const backdrop = document.querySelector('.backdrop');
-
       function toggleSidebar() {
         sidebar.classList.toggle('open');
         backdrop.classList.toggle('active');
       }
-
       menuBtn.addEventListener('click', toggleSidebar);
       closeBtn.addEventListener('click', toggleSidebar);
       backdrop.addEventListener('click', toggleSidebar);
     })();
 
-    // File upload preview
     (function(){
-      const fileInput = document.getElementById('fileInput');
-      const previewBox = document.getElementById('previewBox');
+      const logoutBtn = document.getElementById('logout-btn');
+      const logoutModal = document.getElementById('logout-modal');
+      const cancelBtn = document.getElementById('cancel-logout-btn');
 
-      fileInput.addEventListener('change', function(){
-        previewBox.innerHTML = '';
-        const file = fileInput.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            if (file.type.startsWith('image/')) {
-              const img = document.createElement('img');
-              img.src = e.target.result;
-              previewBox.appendChild(img);
-            } else {
-              const p = document.createElement('p');
-              p.textContent = `File: ${file.name}`;
-              previewBox.appendChild(p);
-            }
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-    })();
-
-    // Search filter for print job history
-    (function(){
-      const input = document.getElementById('jobSearch');
-      const tbody = document.getElementById('jobsTbody');
-
-      input.addEventListener('input', function(){
-        const q = input.value.trim().toLowerCase();
-        const rows = tbody.querySelectorAll('tr');
-        rows.forEach(r => {
-          const text = r.textContent.toLowerCase();
-          r.style.display = text.includes(q) ? '' : 'none';
+      if (logoutBtn && logoutModal && cancelBtn) {
+        // Show the modal when the logout button is clicked
+        logoutBtn.addEventListener('click', function() {
+          logoutModal.classList.add('is-visible');
         });
-      });
-    })();
 
-    // Print job cancellation
-    (function(){
-      const jobsTbody = document.getElementById('jobsTbody');
-      jobsTbody.addEventListener('click', function(e){
-        if (!e.target.classList.contains('cancel-btn')) return;
-        const btn = e.target;
-        const row = btn.closest('tr');
-        const badge = row.querySelector('.badge');
-        badge.classList.remove('badge-pending');
-        badge.classList.add('badge-cancelled');
-        badge.textContent = 'Cancelled';
-        btn.remove();
-        // Update pending count
-        const pendingCountEl = document.getElementById('pending-print-count');
-        let n = parseInt(pendingCountEl.textContent, 10) || 0;
-        if (n > 0) pendingCountEl.textContent = (n - 1).toString();
-      });
+        // Hide the modal when the cancel button is clicked
+        cancelBtn.addEventListener('click', function() {
+          logoutModal.classList.remove('is-visible');
+        });
+
+        // Hide the modal when clicking on the background overlay
+        logoutModal.addEventListener('click', function(event) {
+          if (event.target === logoutModal) {
+            logoutModal.classList.remove('is-visible');
+          }
+        });
+      }
     })();
   </script>
 </body>

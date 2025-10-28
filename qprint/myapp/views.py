@@ -1,5 +1,7 @@
 import random
 import time
+
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -11,6 +13,11 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+import base64
+from django.shortcuts import render
+from django.http import HttpRequest, HttpResponse
+from django.contrib import messages
+from .decorators import no_cache_page
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -298,6 +305,85 @@ def staff_dashboard(request):
         return redirect('student_dashboard')
     return render(request, "myapp/staff_dashboard.html")
 
+
+MAX_PREVIEW_SIZE = 10 * 1024 * 1024  # 10 MB
+
+PRICING = {
+    'bw': 1.00,  # ₱1.00 per page for Black & White
+    'color': 5.00,  # ₱5.00 per page for Color
+}
+
+
 @login_required(login_url='login')
-def student_dashboard(request):
-    return render(request, "myapp/student_dashboard.html")
+@no_cache_page
+def student_dashboard(request: HttpRequest) -> HttpResponse:
+    """
+    Renders the dashboard and handles file upload, print customizations,
+    cost calculation, and validation.
+    """
+    context = {
+        'pdf_data': request.session.get('pdf_data'),
+        'file_name': request.session.get('file_name'),
+        'form_data': {},
+    }
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        # --- File Upload Logic ---
+        if 'print_file' in request.FILES:
+            uploaded_file = request.FILES['print_file']
+            if uploaded_file.name.lower().endswith('.pdf'):
+                encoded_pdf = base64.b64encode(uploaded_file.read()).decode('utf-8')
+                # Store file data in the session to persist it across reloads
+                request.session['pdf_data'] = encoded_pdf
+                request.session['file_name'] = uploaded_file.name
+                # Redirect to clear the POST data and prevent re-submission issues
+                return redirect('student_dashboard')
+            else:
+                messages.error(request, "Please upload a valid PDF file.")
+
+        # Preserve user input across reloads
+        context['form_data'] = {
+            'pages': request.POST.get('pages'),
+            'paper_size': request.POST.get('paper_size'),
+            'color_option': request.POST.get('color_option'),
+        }
+
+        # --- Calculation and Validation Logic ---
+        if action == 'calculate':
+            pages_str = context['form_data']['pages']
+            paper_size = context['form_data']['paper_size']
+            color_option = context['form_data']['color_option']
+
+            # Validation
+            errors = False
+            try:
+                pages = int(pages_str)
+                if pages <= 0:
+                    messages.error(request, "Please enter a positive whole number of pages.")
+                    errors = True
+            except (ValueError, TypeError):
+                messages.error(request, "Please enter a positive whole number of pages.")
+                errors = True
+
+            if not paper_size:
+                messages.error(request, "Please select a paper size.")
+                errors = True
+
+            if not color_option:
+                messages.error(request, "Please select a color option.")
+                errors = True
+
+            # If no errors, calculate the cost
+            if not errors:
+                base_price = PRICING.get(color_option, 0)
+                total_cost = base_price * pages
+                context['total_cost'] = f"{total_cost:.2f}"  # Format to two decimal places
+
+    # On a GET request, clear any old session data
+    elif request.method == 'GET':
+        request.session.pop('pdf_data', None)
+        request.session.pop('file_name', None)
+
+    return render(request, 'myapp/student_dashboard.html', context)
