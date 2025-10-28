@@ -18,6 +18,9 @@ from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from django.contrib import messages
 from .decorators import no_cache_page
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 
 def send_password_reset_email(request, email):
     try:
@@ -61,19 +64,50 @@ def register(request):
 
         if not email.endswith("@gmail.com"):
             messages.error(request, "Email must end with @gmail.com")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if password != confirm:
             messages.error(request, "Passwords do not match")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
+        
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email already used")
-            return render(request, "myapp/register.html")
+            return render(request, "myapp/register.html", {
+                "username": username,
+                "email": email,
+                "password": password,
+                "confirm": confirm,
+            })
 
         otp = str(random.randint(100000, 999999))
 
@@ -207,6 +241,9 @@ def login(request):
 
         else:
             messages.error(request, "Invalid username or password")
+            return render(request, "myapp/login.html", {
+                "username": username
+            })
 
     return render(request, "myapp/login.html")
 
@@ -224,7 +261,11 @@ def logout(request):
         except Exception as e:
             print(f"Supabase activity logging error: {e}")
 
-    auth_logout(request)
+        auth_logout(request)
+        messages.success(request, "You have been logged out successfully.")
+    else:
+        messages.info(request, "You were not logged in.")
+
     return redirect("login")
 
 def forgot_password(request):
@@ -245,6 +286,12 @@ def reset_password(request, uidb64, token):
     if user is not None and default_token_generator.check_token(user, token):
         if request.method == "POST":
             new_password = request.POST.get("password")
+            try:
+                validate_password(new_password, user)
+            except ValidationError as e:
+                messages.error(request, e.messages[0])
+                return render(request, 'myapp/reset_password_form.html', {'validlink': True})
+
             user.set_password(new_password)
             user.save()
             return redirect('login')  
@@ -252,7 +299,10 @@ def reset_password(request, uidb64, token):
     else:
         return render(request, 'myapp/reset_password_form.html', {'validlink': False})
 
+@login_required(login_url='login')
 def staff_dashboard(request):
+    if not request.user.is_staff:
+        return redirect('student_dashboard')
     return render(request, "myapp/staff_dashboard.html")
 
 
@@ -264,7 +314,7 @@ PRICING = {
 }
 
 
-@login_required
+@login_required(login_url='login')
 @no_cache_page
 def student_dashboard(request: HttpRequest) -> HttpResponse:
     """

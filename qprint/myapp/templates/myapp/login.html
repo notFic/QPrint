@@ -41,7 +41,8 @@
                         class="form-input"
                         required
                         autofocus
-                        value="{{ form.username.value|default:'' }}"
+                        value="{{ username|default:'' }}"
+
                     >
                     {% if form.username.errors %}
                         <div class="error-message">{{ form.username.errors.0 }}</div>

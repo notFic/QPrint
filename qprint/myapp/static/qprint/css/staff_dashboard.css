@@ -337,6 +337,26 @@ tbody tr:hover{
   cursor:not-allowed
 }
 
+.logout-divider {
+  margin: 1rem 0;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+
+.logout-link {
+  display: block;
+  color: #e74c3c;
+  font-weight: bold;
+  text-decoration: none;
+  padding: 0.5rem 0;
+  transition: color 0.3s ease;
+}
+
+.logout-link:hover {
+  color: #c0392b;
+  text-decoration: underline;
+}
+
 /* small utilities */
 .muted{
   color:var(--muted);
