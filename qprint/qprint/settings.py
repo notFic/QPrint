@@ -35,7 +35,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'qprint.onrender.com']
 # Application definition
 
 INSTALLED_APPS = [
-    'qprint.qprint.myapp',
+    'myapp',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
