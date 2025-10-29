@@ -29,13 +29,13 @@ SECRET_KEY = 'django-insecure-n*st0-^)tqsw9)6iia47zwln^1m5de)csg=t3#mll9=$0_lnc-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'qprint.onrender.com']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'myapp',
+    'qprint.qprint.myapp',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
