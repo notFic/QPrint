@@ -5,26 +5,23 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.core.mail import send_mail
 from django.contrib import messages
-from .supabase_client import get_supabase
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_decode
-from django.utils.http import urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 
+
 def send_password_reset_email(request, email):
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        return False  
+        return False
 
-    
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-
     reset_link = request.build_absolute_uri(f'/reset-password/{uid}/{token}/')
 
     subject = "Password Reset Request"
@@ -36,17 +33,18 @@ def send_password_reset_email(request, email):
     )
 
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
-
     return True
+
 
 def _send_otp_email(email, otp):
     send_mail(
         "Your QPrint Email Verification Code",
         f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, ignore this email.",
-        "QPrint <qprintapp@gmail.com>",  
+        "QPrint <qprintapp@gmail.com>",
         [email],
         fail_silently=False,
     )
+
 
 def register(request):
     if request.method == "POST":
@@ -72,7 +70,7 @@ def register(request):
                 "password": password,
                 "confirm": confirm,
             })
-        
+
         try:
             validate_password(password)
         except ValidationError as e:
@@ -103,7 +101,6 @@ def register(request):
             })
 
         otp = str(random.randint(100000, 999999))
-
         _send_otp_email(email, otp)
 
         request.session["otp"] = otp
@@ -116,8 +113,10 @@ def register(request):
 
     return render(request, "myapp/register.html")
 
-OTP_EXPIRE_SECONDS = 10 * 60   
-RESEND_COOLDOWN_SECONDS = 60  
+
+OTP_EXPIRE_SECONDS = 10 * 60
+RESEND_COOLDOWN_SECONDS = 60
+
 
 def verify(request):
     if not (request.session.get("username") and request.session.get("email") and request.session.get("password")):
@@ -149,7 +148,6 @@ def verify(request):
 
     if request.method == "POST":
         entered_otp = (request.POST.get("otp") or "").strip()
-
         otp = request.session.get("otp")
         otp_created_ts = request.session.get("otp_created")
 
@@ -179,7 +177,7 @@ def verify(request):
             user = User.objects.create_user(username=username, email=email, password=password)
 
             try:
-                supabase = get_supabase()
+                supabase = settings.SUPABASE_CLIENT
                 profile_data = {
                     'django_user_id': user.id,
                     'username': username,
@@ -218,7 +216,7 @@ def login(request):
             auth_login(request, user)
 
             try:
-                supabase = get_supabase()
+                supabase = settings.SUPABASE_CLIENT
                 login_data = {
                     'user_id': user.id,
                     'login_time': 'now()'
@@ -241,11 +239,10 @@ def login(request):
     return render(request, "myapp/login.html")
 
 
-
 def logout(request):
     if request.user.is_authenticated:
         try:
-            supabase = get_supabase()
+            supabase = settings.SUPABASE_CLIENT
             logout_data = {
                 'user_id': request.user.id,
                 'logout_time': 'now()'
@@ -260,6 +257,7 @@ def logout(request):
         messages.info(request, "You were not logged in.")
 
     return redirect("login")
+
 
 def forgot_password(request):
     if request.method == "POST":
@@ -287,16 +285,18 @@ def reset_password(request, uidb64, token):
 
             user.set_password(new_password)
             user.save()
-            return redirect('login')  
+            return redirect('login')
         return render(request, 'myapp/reset_password_form.html', {'validlink': True})
     else:
         return render(request, 'myapp/reset_password_form.html', {'validlink': False})
+
 
 @login_required(login_url='login')
 def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
     return render(request, "myapp/staff_dashboard.html")
+
 
 @login_required(login_url='login')
 def student_dashboard(request):
