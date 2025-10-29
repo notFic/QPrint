@@ -55,7 +55,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
-ROOT_URLCONF = 'qprint.urls'
+ROOT_URLCONF = 'qprint.qprint.urls'
 
 TEMPLATES = [
     {
