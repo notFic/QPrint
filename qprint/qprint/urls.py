@@ -19,5 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('qprint.myapp.urls')),
+    path('', include('authentication.urls')),
+    path('', include('file_handling.urls')),
 ]
