@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
-
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
+from supabase import create_client
 
 load_dotenv()
 
@@ -60,7 +61,7 @@ ROOT_URLCONF = 'qprint.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -77,8 +78,6 @@ WSGI_APPLICATION = 'qprint.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.config(
@@ -144,9 +143,11 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
 ]
 
-# Supabase Configuration
-SUPABASE_CONFIG = {
-    'url': os.getenv('SUPABASE_URL'),
-    'anon_key': os.getenv('SUPABASE_ANON_KEY'),
-    'service_key': os.getenv('SUPABASE_SERVICE_KEY'),
-}
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+
+if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+    raise ValueError("Supabase URL and Anon Key must be set in environment variables")
+
+SUPABASE_CLIENT = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
