@@ -39,3 +39,4 @@ tzdata==2025.2
 websockets==15.0.1
 whitenoise==6.11.0
 yarl==1.22.0
+sendgrid==6.12.5
