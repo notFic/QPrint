@@ -1,5 +1,7 @@
 import random
 import time
+
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -12,6 +14,8 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+
+from .models import PrintJob, Invoice  # <-- added for dashboard integration
 
 
 def send_password_reset_email(request, email):
@@ -290,14 +294,76 @@ def reset_password(request, uidb64, token):
     else:
         return render(request, 'authentication/reset_password_form.html', {'validlink': False})
 
-
+# --- Dashboards with PrintJob / Invoice integration ---
 @login_required(login_url='login')
 def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
-    return render(request, "authentication/staff_dashboard.html")
+
+    print_jobs = PrintJob.objects.all().order_by('-submitted_at')
+    pending_count = print_jobs.filter(status='Pending').count()
+    invoices = Invoice.objects.all().order_by('-created_at')
+
+    context = {
+        'print_jobs': print_jobs,
+        'pending_count': pending_count,
+        'invoices': invoices
+    }
+    return render(request, "authentication/staff_dashboard.html", context)
 
 
 @login_required(login_url='login')
 def student_dashboard(request):
-    return render(request, "authentication/student_dashboard.html")
+    user = request.user
+    print_jobs = PrintJob.objects.filter(user=user).order_by('-submitted_at')
+    pending_count = print_jobs.filter(status='Pending').count()
+
+    invoices = Invoice.objects.filter(student=user).order_by('-created_at')
+    unpaid_invoices_count = invoices.filter(status='Pending').count()  # filter in view
+
+    context = {
+        'user': user,
+        'print_jobs': print_jobs,
+        'pending_count': pending_count,
+        'invoices': invoices,
+        'unpaid_invoices_count': unpaid_invoices_count,  # pass to template
+    }
+    return render(request, "authentication/student_dashboard.html", context)
+
+@login_required(login_url='login')
+def submit_print_job(request):
+    if request.method == "POST":
+        uploaded_file = request.FILES.get('file')
+        color_option = request.POST.get('colorSetting', 'bw')
+        page_count = request.POST.get('pageCount', 1)
+
+        if uploaded_file:
+            job = PrintJob.objects.create(
+                submitted_by=request.user,
+                file=uploaded_file,
+                color_option=color_option,
+                page_count=page_count,
+                status='Pending'
+            )
+            return JsonResponse({
+                'status': 'success',
+                'job_id': job.id,
+                'message': 'Print job submitted successfully'
+            })
+        else:
+            return JsonResponse({'status': 'error', 'message': 'No file uploaded'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+
+@login_required(login_url='login')
+def cancel_print_job(request, job_id):
+    try:
+        job = PrintJob.objects.get(id=job_id, submitted_by=request.user)
+        if job.status == 'Pending':
+            job.status = 'Cancelled'
+            job.save()
+            return JsonResponse({'status': 'success', 'message': 'Print job cancelled'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Cannot cancel completed job'})
+    except PrintJob.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Print job not found'})
