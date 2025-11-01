@@ -12,6 +12,9 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 def send_password_reset_email(request, email):
@@ -32,18 +35,34 @@ def send_password_reset_email(request, email):
         f"If you didn’t request this, please ignore this email."
     )
 
-    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
-    return True
+    email_message = Mail(
+        from_email="qprintapp@gmail.com",  # Your verified SendGrid sender
+        to_emails=email,
+        subject=subject,
+        plain_text_content=message,
+    )
+
+    try:
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        sg.send(email_message)
+        return True
+    except Exception as e:
+        print(f"SendGrid error: {e}")
+        return False
 
 
 def _send_otp_email(email, otp):
-    send_mail(
-        subject="Your QPrint Email Verification Code",
-        message=f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, please ignore this email.",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=False,
+    message = Mail(
+        from_email="qprintapp@gmail.com",
+        to_emails=email,
+        subject="Your QPrint Verification Code",
+        plain_text_content=f"Hello,\n\nYour OTP is: {otp}\n\nIf you didn’t request this, ignore this email.",
     )
+    try:
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        sg.send(message)
+    except Exception as e:
+        print(f"SendGrid error: {e}")
 
 
 def register(request):
