@@ -301,25 +301,32 @@ def staff_dashboard(request):
         return redirect('student_dashboard')
 
     print_jobs = PrintJob.objects.all().order_by('-submitted_at')
-    pending_count = print_jobs.filter(status='Pending').count()
     invoices = Invoice.objects.all().order_by('-created_at')
+    pending_count = PrintJob.objects.filter(status='Pending').count()
+    pending_invoices_count = Invoice.objects.filter(status='Pending').count()
 
     context = {
+        'user': request.user,
         'print_jobs': print_jobs,
+        'invoices': invoices,
         'pending_count': pending_count,
-        'invoices': invoices
+        'pending_invoices_count': pending_invoices_count,
     }
-    return render(request, "authentication/staff_dashboard.html", context)
+
+    return render(request, 'authentication/staff_dashboard.html', context)
 
 
 @login_required(login_url='login')
 def student_dashboard(request):
     user = request.user
+
+    # Print Jobs
     print_jobs = PrintJob.objects.filter(user=user).order_by('-submitted_at')
     pending_count = print_jobs.filter(status='Pending').count()
 
+    # Invoices
     invoices = Invoice.objects.filter(student=user).order_by('-created_at')
-    unpaid_invoices_count = invoices.filter(status='Pending').count()  # filter in view
+    unpaid_invoices_count = invoices.filter(status='Pending').count()
 
     context = {
         'user': user,
@@ -328,7 +335,8 @@ def student_dashboard(request):
         'invoices': invoices,
         'unpaid_invoices_count': unpaid_invoices_count,  # pass to template
     }
-    return render(request, "authentication/student_dashboard.html", context)
+    return render(request, 'authentication/student_dashboard.html', context)
+
 
 @login_required(login_url='login')
 def submit_print_job(request):
