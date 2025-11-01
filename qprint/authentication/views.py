@@ -38,10 +38,10 @@ def send_password_reset_email(request, email):
 
 def _send_otp_email(email, otp):
     send_mail(
-        "Your QPrint Email Verification Code",
-        f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, ignore this email.",
-        "QPrint <qprintapp@gmail.com>",
-        [email],
+        subject="Your QPrint Email Verification Code",
+        message=f"Hello,\n\nYour QPrint verification code is: {otp}\n\nIf you didn't request this, please ignore this email.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
         fail_silently=False,
     )
 
