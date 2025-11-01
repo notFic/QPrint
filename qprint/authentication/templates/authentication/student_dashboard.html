@@ -37,7 +37,6 @@
       <a href="#payments">Payments</a>
       <a href="#profile">Profile</a>
       <a href="#support">Support</a>
-      <a href="#support">Support</a>
       <hr class="logout-divider">
       <a href="{% url 'logout' %}" class="logout-link">Logout</a>
     </div>
@@ -47,7 +46,7 @@
   <div class="backdrop" id="backdrop" aria-hidden="true"></div>
 
   <div class="container" role="main">
-    <h1>Welcome, Jane Doe</h1>
+    <h1>Welcome, {{ user.username }}</h1>
 
     <!-- Stats row -->
     <div class="stats-grid" aria-hidden="false">
@@ -59,7 +58,7 @@
         </div>
         <div class="stat-content">
           <h3>Pending Print Jobs</h3>
-          <p id="pending-print-count">2</p>
+          <p id="pending-print-count">{{ pending_count }}</p>
         </div>
       </div>
       <div class="stat-card" role="region" aria-label="Unpaid invoices">
@@ -70,12 +69,12 @@
         </div>
         <div class="stat-content">
           <h3>Unpaid Invoices</h3>
-          <p id="unpaid-invoice-count">1</p>
+          <p id="unpaid-invoice-count">{{ unpaid_invoices_count }}</p>
         </div>
       </div>
     </div>
 
-    <!-- Main content grid (left / right) -->
+    <!-- Main content grid -->
     <div class="content-grid" role="region" aria-label="Dashboard content">
       <div class="center-col">
         <div class="card" aria-labelledby="printJobTitle">
@@ -94,6 +93,7 @@
           </div>
           <button class="submit-btn" type="button">Submit Print Job</button>
         </div>
+
         <div class="card" aria-labelledby="jobHistoryTitle">
           <h2 id="jobHistoryTitle">Print Job History</h2>
           <div class="search-box" role="search" aria-label="Search print jobs">
@@ -107,34 +107,43 @@
               <tr><th>File</th><th>Submitted</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody id="jobsTbody">
+              {% for job in print_jobs %}
               <tr>
-                <td>Assignment1.pdf</td>
-                <td>2025-10-07 0:30 AM</td>
-                <td><span class="badge badge-pending">Pending</span></td>
-                <td><button class="cancel-btn" data-job-id="1">Cancel</button></td>
+                <td>{{ job.file.name|slice:"10:" }}</td>
+                <td>{{ job.submitted_at|date:"Y-m-d H:i A" }}</td>
+                <td>
+                  <span class="badge
+                    {% if job.status == 'Pending' %}badge-pending{% elif job.status == 'Completed' %}badge-completed{% elif job.status == 'Cancelled' %}badge-cancelled{% endif %}">
+                    {{ job.status }}
+                  </span>
+                </td>
+                <td>
+                  {% if job.status == 'Pending' %}
+                  <button class="cancel-btn" data-job-id="{{ job.id }}">Cancel</button>
+                  {% endif %}
+                </td>
               </tr>
-              <tr>
-                <td>Project.docx</td>
-                <td>2025-10-06 3:15 PM</td>
-                <td><span class="badge badge-completed">Completed</span></td>
-                <td></td>
-              </tr>
+              {% empty %}
+              <tr><td colspan="4">No print jobs found.</td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
       </div>
+
       <div class="right-col">
         <div class="card" aria-labelledby="profileTitle">
           <h2 id="profileTitle">Profile</h2>
           <div class="profile-info">
-            <p><strong>Name:</strong> Jane Doe</p>
-            <p><strong>Student ID:</strong> 123456</p>
+            <p><strong>Name:</strong> {{ user.username }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
             <p><strong>Account Status:</strong> Enrolled</p>
             <p><a href="#update-password">Update Password</a></p>
             <p><a href="#terms">View Terms and Policies</a></p>
             <p><a href="#support">Contact Support</a></p>
           </div>
         </div>
+
         <div class="card" aria-labelledby="paymentsTitle">
           <h2 id="paymentsTitle">Payments & Invoices</h2>
           <div class="file-upload">
@@ -148,18 +157,27 @@
                 <tr><th>Invoice ID</th><th>Amount</th><th>Status</th><th>Action</th></tr>
               </thead>
               <tbody id="invoicesTbody">
+                {% for invoice in invoices %}
                 <tr>
-                  <td>INV-001</td>
-                  <td>$5.00</td>
-                  <td><span class="badge badge-pending">Pending</span></td>
-                  <td><a href="#view-invoice">View</a></td>
+                  <td>{{ invoice.invoice_id }}</td>
+                  <td>{{ invoice.amount }}</td>
+                  <td>
+                    <span class="badge
+                      {% if invoice.status == 'Pending' %}badge-pending{% elif invoice.status == 'Paid' %}badge-completed{% endif %}">
+                      {{ invoice.status }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if invoice.status == 'Pending' %}
+                    <a href="#">View</a>
+                    {% else %}
+                    <a href="#">Download Receipt</a>
+                    {% endif %}
+                  </td>
                 </tr>
-                <tr>
-                  <td>INV-002</td>
-                  <td>$3.50</td>
-                  <td><span class="badge badge-completed">Paid</span></td>
-                  <td><a href="#download-receipt">Download Receipt</a></td>
-                </tr>
+                {% empty %}
+                <tr><td colspan="4">No invoices found.</td></tr>
+                {% endfor %}
               </tbody>
             </table>
           </div>
