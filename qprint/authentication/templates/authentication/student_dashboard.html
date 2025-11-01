@@ -109,7 +109,7 @@
             <tbody id="jobsTbody">
               {% for job in print_jobs %}
               <tr>
-                <td>{{ job.file.name|slice:"10:" }}</td>
+                <td>{{ job.file_name }}</td>
                 <td>{{ job.submitted_at|date:"Y-m-d H:i A" }}</td>
                 <td>
                   <span class="badge
@@ -159,7 +159,7 @@
               <tbody id="invoicesTbody">
                 {% for invoice in invoices %}
                 <tr>
-                  <td>{{ invoice.invoice_id }}</td>
+                  <td>{{ invoice.id }}</td>
                   <td>{{ invoice.amount }}</td>
                   <td>
                     <span class="badge

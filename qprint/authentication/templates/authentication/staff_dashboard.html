@@ -42,14 +42,14 @@
     </div>
   </div>
 
-  <!-- Backdrop for sidebar -->
+  <!-- Backdrop -->
   <div class="backdrop" id="backdrop" aria-hidden="true"></div>
 
   <div class="container" role="main">
     <h1>Welcome, {{ user.username }}</h1>
 
     <!-- Stats row -->
-    <div class="stats-grid" aria-hidden="false">
+    <div class="stats-grid">
       <div class="stat-card" role="region" aria-label="Pending print jobs">
         <div class="stat-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -61,55 +61,37 @@
           <p id="pending-print-count">{{ pending_count }}</p>
         </div>
       </div>
-      <div class="stat-card" role="region" aria-label="Unpaid invoices">
+      <div class="stat-card" role="region" aria-label="Pending invoices">
         <div class="stat-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M7 7h10M7 11h10M7 15h6M21 8v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"></path>
           </svg>
         </div>
         <div class="stat-content">
-          <h3>Unpaid Invoices</h3>
-          <p id="unpaid-invoice-count">{{ invoices|filter:"status='Pending'"|length }}</p>
+          <h3>Pending Invoices</h3>
+          <p id="pending-invoices-count">{{ pending_invoices_count }}</p>
         </div>
       </div>
     </div>
 
-    <!-- Main content grid (left / right) -->
-    <div class="content-grid" role="region" aria-label="Dashboard content">
+    <!-- Main content grid -->
+    <div class="content-grid">
       <div class="center-col">
+        <!-- Print Jobs Table -->
         <div class="card" aria-labelledby="printJobTitle">
-          <h2 id="printJobTitle">Submit Print Job</h2>
-          <div class="file-upload">
-            <label for="fileInput">Upload File</label>
-            <input type="file" id="fileInput" accept=".pdf,.docx,.pptx" aria-label="Upload print file">
-            <div class="preview-box" id="previewBox"></div>
+          <h2 id="printJobTitle">All Print Jobs</h2>
+          <div class="search-box">
+            <input id="jobSearch" placeholder="Search by filename...">
           </div>
-          <div class="print-settings">
-            <select id="colorSetting" aria-label="Select color option">
-              <option value="bw">Black & White</option>
-              <option value="color">Color</option>
-            </select>
-            <input type="number" id="pageCount" min="1" placeholder="Number of pages" aria-label="Number of pages">
-          </div>
-          <button class="submit-btn" type="button">Submit Print Job</button>
-        </div>
-
-        <div class="card" aria-labelledby="jobHistoryTitle">
-          <h2 id="jobHistoryTitle">Print Job History</h2>
-          <div class="search-box" role="search" aria-label="Search print jobs">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/>
-            </svg>
-            <input id="jobSearch" placeholder="Search by filename..." aria-label="Search print jobs">
-          </div>
-          <table aria-describedby="jobHistoryTitle" role="table">
+          <table>
             <thead>
-              <tr><th>File</th><th>Submitted</th><th>Status</th><th>Action</th></tr>
+              <tr><th>File</th><th>User</th><th>Submitted</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody id="jobsTbody">
               {% for job in print_jobs %}
               <tr>
-                <td>{{ job.file.name|slice:"10:" }}</td>
+                <td>{{ job.file_name }}</td>
+                <td>{{ job.username }}</td>
                 <td>{{ job.submitted_at|date:"Y-m-d H:i A" }}</td>
                 <td>
                   <span class="badge
@@ -124,7 +106,7 @@
                 </td>
               </tr>
               {% empty %}
-              <tr><td colspan="4">No print jobs found.</td></tr>
+              <tr><td colspan="5">No print jobs found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -132,55 +114,41 @@
       </div>
 
       <div class="right-col">
+        <!-- Profile -->
         <div class="card" aria-labelledby="profileTitle">
           <h2 id="profileTitle">Profile</h2>
           <div class="profile-info">
             <p><strong>Name:</strong> {{ user.username }}</p>
             <p><strong>Email:</strong> {{ user.email }}</p>
             <p><strong>Role:</strong> Staff</p>
-            <p><a href="#update-password">Update Password</a></p>
-            <p><a href="#terms">View Terms and Policies</a></p>
-            <p><a href="#support">Contact Support</a></p>
           </div>
         </div>
 
+        <!-- Invoices -->
         <div class="card" aria-labelledby="paymentsTitle">
-          <h2 id="paymentsTitle">Payments & Invoices</h2>
-          <div class="file-upload">
-            <label for="paymentProof">Upload Payment Proof</label>
-            <input type="file" id="paymentProof" accept="image/*,.pdf" aria-label="Upload payment proof">
-          </div>
-          <div class="payment-info">
-            <h3>Invoices</h3>
-            <table aria-describedby="paymentsTitle" role="table">
-              <thead>
-                <tr><th>Invoice ID</th><th>Amount</th><th>Status</th><th>Action</th></tr>
-              </thead>
-              <tbody id="invoicesTbody">
-                {% for invoice in invoices %}
-                <tr>
-                  <td>{{ invoice.invoice_id }}</td>
-                  <td>{{ invoice.amount }}</td>
-                  <td>
-                    <span class="badge
-                      {% if invoice.status == 'Pending' %}badge-pending{% elif invoice.status == 'Paid' %}badge-completed{% endif %}">
-                      {{ invoice.status }}
-                    </span>
-                  </td>
-                  <td>
-                    {% if invoice.status == 'Pending' %}
-                    <a href="#">View</a>
-                    {% else %}
-                    <a href="#">Download Receipt</a>
-                    {% endif %}
-                  </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4">No invoices found.</td></tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+          <h2 id="paymentsTitle">Invoices</h2>
+          <table>
+            <thead>
+              <tr><th>Invoice ID</th><th>Student</th><th>Amount</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {% for invoice in invoices %}
+              <tr>
+                <td>{{ invoice.id }}</td>
+                <td>{{ invoice.student.username }}</td>
+                <td>{{ invoice.amount }}</td>
+                <td>
+                  <span class="badge
+                    {% if invoice.status == 'Pending' %}badge-pending{% elif invoice.status == 'Paid' %}badge-completed{% elif invoice.status == 'Cancelled' %}badge-cancelled{% endif %}">
+                    {{ invoice.status }}
+                  </span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4">No invoices found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
