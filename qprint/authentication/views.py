@@ -14,12 +14,23 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest, HttpResponse
+from django.views.decorators.cache import never_cache
 import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from io import BytesIO
+import uuid
+import base64
+import PyPDF2
+from io import BytesIO
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.conf import settings
 
-from .models import PrintJob, Invoice  # <-- added for dashboard integration
-
+supabase = settings.SUPABASE_CLIENT
+bucket = settings.SUPABASE_BUCKET
 
 def send_password_reset_email(request, email):
     try:
@@ -319,78 +330,175 @@ def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
 
-    print_jobs = PrintJob.objects.all().order_by('-submitted_at')
-    invoices = Invoice.objects.all().order_by('-created_at')
-    pending_count = PrintJob.objects.filter(status='Pending').count()
-    pending_invoices_count = Invoice.objects.filter(status='Pending').count()
+    # print_jobs = PrintJob.objects.all().order_by('-submitted_at')
+    # invoices = Invoice.objects.all().order_by('-created_at')
+    # pending_count = PrintJob.objects.filter(status='Pending').count()
+    # pending_invoices_count = Invoice.objects.filter(status='Pending').count()
 
     context = {
         'user': request.user,
-        'print_jobs': print_jobs,
-        'invoices': invoices,
-        'pending_count': pending_count,
-        'pending_invoices_count': pending_invoices_count,
+        # 'print_jobs': print_jobs,
+        # 'invoices': invoices,
+        # 'pending_count': pending_count,
+        # 'pending_invoices_count': pending_invoices_count,
     }
 
     return render(request, 'subtemplates/staff_dashboard.html', context)
 
+MAX_PREVIEW_SIZE = 10 * 1024 * 1024  # 10 MB
 
+PRICING = {
+    'bw': 1.00,  # ₱1.00 per page for Black & White
+    'color': 5.00,  # ₱5.00 per page for Color
+}
 @login_required(login_url='login')
-def student_dashboard(request):
-    user = request.user
-
-    # Print Jobs
-    print_jobs = PrintJob.objects.filter(user=user).order_by('-submitted_at')
-    pending_count = print_jobs.filter(status='Pending').count()
-
-    # Invoices
-    invoices = Invoice.objects.filter(student=user).order_by('-created_at')
-    unpaid_invoices_count = invoices.filter(status='Pending').count()
-
+@never_cache
+def student_dashboard(request: HttpRequest) -> HttpResponse:
     context = {
-        'user': user,
-        'print_jobs': print_jobs,
-        'pending_count': pending_count,
-        'invoices': invoices,
-        'unpaid_invoices_count': unpaid_invoices_count,  # pass to template
+        'pdf_data': request.session.get('pdf_data'),
+        'file_name': request.session.get('file_name'),
+        'total_pages': request.session.get('total_pages'),
+        'form_data': {},
+        'total_cost': None,
     }
+
+    # === FETCH JOBS FROM SUPABASE ===
+    jobs_resp = supabase.table('print_jobs')\
+        .select('*')\
+        .eq('user_id', request.user.id)\
+        .order('submitted_at', desc=True)\
+        .execute()
+    jobs = jobs_resp.data or []
+    context.update({
+        'print_jobs': jobs,
+        'latest_job': jobs[0] if jobs else None,
+    })
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        # --- MANUAL UPLOAD: Preview only (no Supabase) ---
+        if 'print_file' in request.FILES:
+            file = request.FILES['print_file']
+            if not file.name.lower().endswith('.pdf'):
+                messages.error(request, "Only PDF files allowed.")
+                return redirect('student_dashboard')
+
+            # File size limit: 25 MB
+            if file.size > 25 * 1024 * 1024:
+                messages.error(request, "File size must be 25 MB or less.")
+                return redirect('student_dashboard')
+
+            # Count pages
+            pdf_file = BytesIO(file.read())
+            reader = PyPDF2.PdfReader(pdf_file)
+            page_count = len(reader.pages)
+
+            # Save to session for preview
+            pdf_file.seek(0)
+            request.session['pdf_data'] = base64.b64encode(pdf_file.read()).decode()
+            request.session['file_name'] = file.name
+            request.session['total_pages'] = page_count
+
+            messages.success(request, "File preview ready.")
+            return redirect('student_dashboard')
+
+        # --- CLEAR ALL ---
+        if action == 'clear':
+            for k in ['pdf_data', 'file_name', 'total_pages']:
+                request.session.pop(k, None)
+            return redirect('student_dashboard')
+
+        # --- PRESERVE FORM ---
+        context['form_data'] = {
+            'pages': request.session.get('total_pages'),
+            'paper_size': request.POST.get('paper_size'),
+            'color_option': request.POST.get('color_option'),
+        }
+
+        # --- CALCULATE COST ---
+        if action == 'calculate':
+            pages = context['form_data']['pages']
+            paper = context['form_data']['paper_size']
+            color = context['form_data']['color_option']
+
+            if not all([pages, paper, color]):
+                messages.error(request, "Fill all fields.")
+            else:
+                price = PRICING.get(color, 0)
+                total = price * int(pages)
+                context['total_cost'] = f"{total:.2f}"
+
+        # --- SUBMIT JOB: Upload to Supabase ---
+        if action == 'submit_job':
+            if not request.session.get('pdf_data'):
+                messages.error(request, "Upload a file first.")
+                return redirect('student_dashboard')
+
+            # Reconstruct file from session
+            pdf_data = base64.b64decode(request.session['pdf_data'])
+            file_name = request.session['file_name']
+            page_count = request.session['total_pages']
+
+            # Upload to Supabase
+            file_id = str(uuid.uuid4())
+            path = f"{request.user.id}/{file_id}/{file_name}"
+            supabase.storage.from_(bucket).upload(
+                path, pdf_data, {'content-type': 'application/pdf'}
+            )
+            file_url = supabase.storage.from_(bucket).get_public_url(path)
+
+            # Save job
+            job_data = {
+                'user_id': request.user.id,
+                'username': request.user.username,
+                'file_name': file_name,
+                'file_url': file_url,
+                'pages': page_count,
+                'paper_size': context['form_data']['paper_size'],
+                'color_option': context['form_data']['color_option'],
+                'total_cost': context['total_cost'] or 0.0,
+                'status': 'Pending',
+                'submitted_at': 'now()'
+            }
+            supabase.table('print_jobs').insert(job_data).execute()
+
+            messages.success(request, "Job submitted!")
+            for k in ['pdf_data', 'file_name', 'total_pages']:
+                request.session.pop(k, None)
+            return redirect('student_dashboard')
+
+        # --- CANCEL JOB ---
+        if action == 'cancel_job':
+            job_id = request.POST.get('job_id')
+            job_resp = supabase.table('print_jobs')\
+                .select('*')\
+                .eq('id', job_id)\
+                .eq('user_id', request.user.id)\
+                .execute()
+            job = job_resp.data[0] if job_resp.data else None
+
+            if job and job['status'] == 'Pending':
+                # Delete file
+                path = '/'.join(job['file_url'].split('/')[-2:])
+                supabase.storage.from_(bucket).remove([path])
+                # Delete record
+                supabase.table('print_jobs').delete().eq('id', job_id).execute()
+                messages.success(request, "Job cancelled.")
+            else:
+                messages.error(request, "Cannot cancel.")
+            return redirect('student_dashboard')
+
+    else:
+        if not request.session.get('pdf_data'):
+            for k in ['pdf_data', 'file_name', 'total_pages']:
+                request.session.pop(k, None)
+
     return render(request, 'subtemplates/student_dashboard.html', context)
 
-
-@login_required(login_url='login')
-def submit_print_job(request):
-    if request.method == "POST":
-        uploaded_file = request.FILES.get('file')
-        color_option = request.POST.get('colorSetting', 'bw')
-        page_count = request.POST.get('pageCount', 1)
-
-        if uploaded_file:
-            job = PrintJob.objects.create(
-                submitted_by=request.user,
-                file=uploaded_file,
-                color_option=color_option,
-                page_count=page_count,
-                status='Pending'
-            )
-            return JsonResponse({
-                'status': 'success',
-                'job_id': job.id,
-                'message': 'Print job submitted successfully'
-            })
-        else:
-            return JsonResponse({'status': 'error', 'message': 'No file uploaded'})
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-
-@login_required(login_url='login')
-def cancel_print_job(request, job_id):
-    try:
-        job = PrintJob.objects.get(id=job_id, submitted_by=request.user)
-        if job.status == 'Pending':
-            job.status = 'Cancelled'
-            job.save()
-            return JsonResponse({'status': 'success', 'message': 'Print job cancelled'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Cannot cancel completed job'})
-    except PrintJob.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Print job not found'})
+# ──────── API for modal ─────────
+def get_job_detail(request, job_id):
+    resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
+    if resp.data:
+        return JsonResponse(resp.data[0])
+    return JsonResponse({'error': 'Not found'}, status=404)
