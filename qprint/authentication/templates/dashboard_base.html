@@ -1,0 +1,154 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Q-Print Dashboard{% endblock %}</title>
+
+    <!-- Core Styles -->
+    <link rel="stylesheet" href="{% static 'qprint/css/dashboard_base.css' %}">
+
+    <!-- Page-specific styles -->
+    {% block stylesheet %}{% endblock %}
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <header class="header-bar" role="banner">
+        <img src="{% static 'qprint/images/header.jpg' %}" alt="" aria-hidden="true" class="header-background">
+        <button class="menu-btn" aria-label="Toggle sidebar" aria-controls="sidebar">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+        <img src="{% static 'qprint/images/logo.png' %}" alt="Q-Print Logo" class="header-logo">
+        <div class="header-title">Q-Print</div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+        <div class="sidebar-header">
+            <h2>Menu</h2>
+            <button class="close-btn" aria-label="Close sidebar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="sidebar-content">
+            {% block sidebar_links %}
+                <!-- Default links; can be overridden -->
+                <a href="{% url 'student_dashboard' %}">Dashboard</a>
+                <a href="#profile">Profile</a>
+                <a href="#settings">Settings</a>
+                <a href="#support">Contact Support</a>
+                <a href="#terms">Terms of Service</a>
+            {% endblock %}
+            <button type="button" class="logout-link" id="logout-btn">Log Out</button>
+        </div>
+    </nav>
+
+    <!-- Backdrop for mobile overlay -->
+    <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="logout-modal" id="logout-modal" role="dialog" aria-labelledby="logout-modal-title" aria-hidden="true">
+        <div class="modal-box">
+            <h2 id="logout-modal-title">Confirm Log Out</h2>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-actions">
+                <button type="button" class="modal-btn cancel-btn" id="cancel-logout-btn">Cancel</button>
+                <a href="{% url 'logout' %}" class="modal-btn confirm-btn">Yes, Log Out</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="container" role="main">
+        <!-- Welcome Header -->
+        {% block welcome_header %}
+            <h1>Welcome, {{ request.user.get_full_name|default:request.user.username|capfirst }}</h1>
+        {% endblock %}
+
+        <!-- Django Messages -->
+        {% block messages %}
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="{% if message.tags %}{{ message.tags }}{% else %}info-message{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endblock %}
+
+        <!-- Main Dashboard Content -->
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Core Scripts -->
+    <script>
+        // Sidebar Toggle
+        (function () {
+            const menuBtn = document.querySelector('.menu-btn');
+            const sidebar = document.querySelector('.sidebar');
+            const closeBtn = document.querySelector('.close-btn');
+            const backdrop = document.querySelector('.backdrop');
+
+            function toggleSidebar() {
+                sidebar.classList.toggle('open');
+                backdrop.classList.toggle('active');
+            }
+
+            if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
+            if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
+            if (backdrop) backdrop.addEventListener('click', toggleSidebar);
+        })();
+
+        // Logout Modal
+        (function () {
+            const logoutBtn = document.getElementById('logout-btn');
+            const logoutModal = document.getElementById('logout-modal');
+            const cancelBtn = document.getElementById('cancel-logout-btn');
+
+            if (logoutBtn && logoutModal && cancelBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    logoutModal.classList.add('is-visible');
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    logoutModal.classList.remove('is-visible');
+                });
+
+                logoutModal.addEventListener('click', (e) => {
+                    if (e.target === logoutModal) {
+                        logoutModal.classList.remove('is-visible');
+                    }
+                });
+            }
+        })();
+
+        // Auto-fade messages (like log_base.html)
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.querySelectorAll('.messages > div').forEach(el => {
+                    el.style.transition = "opacity 0.5s ease";
+                    el.style.opacity = "0";
+                    setTimeout(() => el.remove(), 500);
+                });
+            }, 3000);
+        });
+    </script>
+
+    <!-- Page-specific scripts -->
+    {% block javascript %}{% endblock %}
+
+</body>
+</html>

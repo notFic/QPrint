@@ -1,0 +1,117 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/student_dashboard.css' %}">
+{% endblock %}
+
+{% block sidebar_links %}
+<!-- Sidebar links – customizable per role -->
+<a href="{% url 'student_dashboard' %}">Dashboard</a>
+<a href="#my-jobs">My Print Jobs</a>
+<a href="#invoices">Invoices</a>
+<a href="#profile">Profile</a>
+<a href="#settings">Settings</a>
+<a href="#support">Contact Support</a>
+<a href="#terms">Terms of Service</a>
+{% endblock %}
+
+{% block welcome_header %}
+<!-- Original welcome message -->
+<h1>Welcome, Student {{ request.user.username|capfirst }}</h1>
+{% endblock %}
+
+{% block content %}
+<!-- === FULL ORIGINAL CONTENT GRID === -->
+<div class="content-grid">
+    <div class="left-col">
+        <div class="card">
+            <!-- File submission form (unchanged) -->
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <h2>File Submission</h2>
+                <p>Upload your document and specify print details.</p>
+
+                <!-- Django messages (your original) -->
+                {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                    <p class="error-message">{{ message }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- File input -->
+                <div class="file-upload">
+                    <label for="fileInput">Choose PDF</label>
+                    <input type="file" id="fileInput" name="print_file" accept=".pdf"
+                           onchange="this.form.submit()">
+                </div>
+
+                <!-- File name display -->
+                {% if file_name %}
+                <div class="filename-display">
+                    <p><strong>Selected File:</strong></p>
+                    <span>{{ file_name }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Print options -->
+                <div class="print-options">
+                    <div class="form-group">
+                        <label for="pages">Number of Pages</label>
+                        <input type="number" id="pages" name="pages"
+                               placeholder="e.g., 10" value="{{ form_data.pages }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="paper_size">Paper Size</label>
+                        <select id="paper_size" name="paper_size">
+                            <option value="" {% if not form_data.paper_size %}selected{% endif %} disabled>Select a size</option>
+                            <option value="A4" {% if form_data.paper_size == 'A4' %}selected{% endif %}>A4 (8.27" x 11.69")</option>
+                            <option value="Letter" {% if form_data.paper_size == 'Letter' %}selected{% endif %}>Letter (8.5" x 11")</option>
+                            <option value="Long" {% if form_data.paper_size == 'Long' %}selected{% endif %}>Long (8.5" x 13")</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="color_option">Color Option</label>
+                        <select id="color_option" name="color_option">
+                            <option value="" {% if not form_data.color_option %}selected{% endif %} disabled>Select a color</option>
+                            <option value="bw" {% if form_data.color_option == 'bw' %}selected{% endif %}>Black & White</option>
+                            <option value="color" {% if form_data.color_option == 'color' %}selected{% endif %}>Color</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Calculate cost button -->
+                <button type="submit" name="action" value="calculate" class="secondary-btn">Calculate Cost</button>
+
+                <!-- Total cost display -->
+                {% if total_cost %}
+                <div class="total-cost-display">
+                    <h3>Total Estimated Cost:</h3>
+                    <span>₱{{ total_cost }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Submit job button -->
+                <button type="submit" name="action" value="submit_job" class="primary-btn">Submit Print Job</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right column: PDF preview -->
+    <div class="right-col">
+        <div class="card">
+            <h2>File Preview</h2>
+            <div class="preview-box">
+                {% if pdf_data %}
+                <iframe class="pdf-iframe" src="data:application/pdf;base64,{{ pdf_data }}" title="PDF Preview"></iframe>
+                {% else %}
+                <div class="preview-placeholder"><p>Upload a PDF to see the preview here</p></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- === END OF ORIGINAL CONTENT === -->
+{% endblock %}

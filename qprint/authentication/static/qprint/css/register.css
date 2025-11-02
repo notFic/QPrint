@@ -150,6 +150,82 @@ body {
 
 .error-message { color: #dc2626; font-size: 0.875rem; margin-top: 0.25rem; }
 
+.terms-group {
+    margin-top: 1.2rem;
+    font-size: 0.9rem;
+    color: #374151;
+    display: flex;
+    align-items: center;
+}
+
+.terms-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.terms-label a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.terms-label a:hover {
+    text-decoration: underline;
+}
+
+/* ✅ Modal Styling */
+.modal {
+    display: none; /* hidden by default */
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 1.8rem 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+    animation: fadeIn 0.25s ease-out;
+}
+
+.modal-content h2 {
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.modal-body {
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.close:hover {
+    color: #b91c1c;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
     .container { flex-direction: column; }
     .left-panel { height: 200px; flex: none; }

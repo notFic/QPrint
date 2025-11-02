@@ -1,0 +1,50 @@
+{% extends "log_base.html" %}
+{% load static %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/login.css' %}">
+{% endblock %}
+
+{% block header %}
+<h1 class="form-title">Login</h1>
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="form-container" novalidate>
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" id="username" name="username" class="form-input"
+               required autofocus value="{{ username|default:'' }}">
+        {% if form.username.errors %}
+            <div class="error-message">{{ form.username.errors.0 }}</div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <div class="password-container">
+            <input type="password" id="password" name="password" class="form-input" required>
+            <button type="button" class="password-toggle" onclick="togglePassword('password')">👁️</button>
+        </div>
+        {% if form.password.errors %}
+            <div class="error-message">{{ form.password.errors.0 }}</div>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="submit-btn">Login</button>
+</form>
+{% endblock %}
+
+{% block footer_links %}
+<div class="footer-section">
+  <a href="{% url 'forgot_password' %}" class="forgot-link">Forgot your password?</a>
+  <div class="divider"></div>
+  <p class="register-text">
+    Don’t have an account?
+    <a href="{% url 'register' %}" class="register-link">Create one</a>
+  </p>
+</div>
+{% endblock %}
+
