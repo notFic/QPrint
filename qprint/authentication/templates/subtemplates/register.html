@@ -1,0 +1,97 @@
+{% extends "log_base.html" %}
+{% load static %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/register.css' %}">
+{% endblock %}
+
+{% block header %}
+<h1 class="form-title">Create Account</h1>
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="form-container">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" id="username" name="username" class="form-input"
+               value="{{ username|default:'' }}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" id="email" name="email" class="form-input"
+               value="{{ email|default:'' }}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <div class="password-container">
+            <input type="password" id="password" name="password" class="form-input"
+                   value="{{ password|default:'' }}" required>
+            <button type="button" class="password-toggle" onclick="togglePassword('password')">👁️</button>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="confirm_password" class="form-label">Confirm Password</label>
+        <div class="password-container">
+            <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                   value="{{ confirm|default:'' }}" required>
+            <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')">👁️</button>
+        </div>
+    </div>
+
+    <div class="form-group terms-group">
+        <label class="terms-label">
+        <input type="checkbox" id="acceptTerms" name="accept_terms" required>
+        I agree to the
+        <a href="#" id="openTermsModal">Terms and Conditions</a>
+    </label>
+</div>
+
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <span id="closeTerms" class="close">&times;</span>
+            <h2>Terms and Conditions</h2>
+            <div class="modal-body">
+                <p>Welcome to QPrint! By creating an account, you agree to the following terms:</p>
+                <ul>
+                    <li>Your uploaded files will only be used for printing purposes.</li>
+                    <li>Please ensure you have the rights to any file you upload.</li>
+                    <li>QPrint is not responsible for lost or corrupted files once printed.</li>
+                    <li>Misuse of the platform may result in account suspension.</li>
+                </ul>
+            <p><br>By accepting, you acknowledge that you’ve read and agree to these conditions.</p>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="submit-btn">Create Account</button>
+</form>
+
+    <script>
+        const modal = document.getElementById("termsModal");
+        const openBtn = document.getElementById("openTermsModal");
+        const closeBtn = document.getElementById("closeTerms");
+
+        openBtn.addEventListener("click", e => {
+            e.preventDefault();
+            modal.style.display = "flex";
+        });
+
+        closeBtn.addEventListener("click", () => modal.style.display = "none");
+
+        window.addEventListener("click", e => {
+            if (e.target === modal) modal.style.display = "none";
+        });
+    </script>
+
+{% endblock %}
+
+{% block footer_links %}
+<div class="login-link">
+    Already have an account? <a href="{% url 'login' %}">Sign in</a>
+</div>
+{% endblock %}

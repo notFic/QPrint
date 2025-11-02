@@ -1,0 +1,30 @@
+{% extends "log_base.html" %}
+{% load static %}
+
+{% block title %}Email Verification | Q-Print Project{% endblock %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/verify.css' %}">
+{% endblock %}
+
+{% block header %}
+<h1 class="form-title">Email Verification</h1>
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="form-container">
+    {% csrf_token %}
+    <input type="text" name="otp" placeholder="Enter verification code"
+           class="form-input" required>
+    <button type="submit" class="submit-btn">Verify Email</button>
+</form>
+{% endblock %}
+
+{% block footer_links %}
+<div class="login-link">
+    <a href="{% url 'verify' %}?resend=1">Send verification email again</a>
+</div>
+<div class="login-link">
+    <a href="{% url 'register' %}">Back to Register</a>
+</div>
+{% endblock %}

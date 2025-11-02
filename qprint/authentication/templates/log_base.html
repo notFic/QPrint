@@ -1,0 +1,83 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {% block stylesheet %}{% endblock %}
+</head>
+
+<body>
+    <div class="container">
+        <div class="left-panel"></div>
+
+        <div class="right-panel">
+
+            <div class="logo-container">
+                <img src="{% static 'qprint/images/logo.png' %}" alt="CIT-U Logo" class="logo">
+                <div class="project-title">Q-Print Project</div>
+            </div>
+
+            {% block header %}
+            {% endblock %}
+
+            {% block messages %}
+            {% if messages %}
+                <div class="messages" style="text-align:center; margin-bottom:1rem;">
+                    {% for message in messages %}
+                        <div class="
+                            {% if message.tags %}
+                                {{ message.tags }}
+                            {% else %}
+                                error-message
+                            {% endif %}
+                        ">
+                            {{ message }}
+                            {% if not forloop.last %}<br>{% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% endblock %}
+
+            {% block content %}
+            {% endblock %}
+
+            {% block footer_links %}
+            {% endblock %}
+
+        </div>
+    </div>
+
+    {% block javascript %}
+    <script>
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const button = field.nextElementSibling;
+            if (!field) return;
+
+            if (field.type === 'password') {
+                field.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                field.type = 'password';
+                button.textContent = '👁️';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.querySelectorAll('.messages').forEach(el => {
+                    el.style.transition = "opacity 0.5s ease";
+                    el.style.opacity = "0";
+                    setTimeout(() => el.remove(), 500);
+                });
+            }, 3000);
+        });
+    </script>
+    {% endblock %}
+
+</body>
+</html>

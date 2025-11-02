@@ -1,0 +1,70 @@
+:root {
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #3b82f6;
+  --danger: #ef4444;
+  --shadow: 0 1px 3px rgba(15,23,42,0.06);
+  --radius: 12px;
+  --error-bg: #fef2f2;
+  --error-text: #991b1b;
+  --error-border: #fecaca;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: #111827;
+  padding-top: 64px; /* Matches original for header offset */
+  min-height: 100vh; /* Ensures full height */
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px;
+  flex-grow: 1; /* Fills remaining space, preventing white space */
+}
+
+h1 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 24px;
+}
+
+/* Header */
+.header-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 64px;
+  background-color: white;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+}
+.header-background {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+.header-logo { height: 36px; margin-right: 12px; }
+.menu-btn { background: none; border: none; cursor: pointer; width: 40px; height: 40px; margin-right: 16px; }
+.header-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
+
+/* Sidebar, Backdrop, Modal, Messages (unchanged from your version) */
+/* ... Paste the remaining original base CSS here for sidebar, logout-modal, messages, etc. ... */
+
+@media (max-width: 980px) {
+  .container { padding: 16px; }
+  .header-bar { padding: 0 16px; }
+  .sidebar { width: 250px; left: -250px; }
+}

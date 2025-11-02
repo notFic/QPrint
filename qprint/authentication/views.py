@@ -78,7 +78,7 @@ def register(request):
 
         if not email.endswith("@gmail.com"):
             messages.error(request, "Email must end with @gmail.com")
-            return render(request, "authentication/register.html", {
+            return render(request, "subtemplates/register.html", {
                 "username": username,
                 "email": email,
                 "password": password,
@@ -87,7 +87,7 @@ def register(request):
 
         if password != confirm:
             messages.error(request, "Passwords do not match")
-            return render(request, "authentication/register.html", {
+            return render(request, "subtemplates/register.html", {
                 "username": username,
                 "email": email,
                 "password": password,
@@ -98,7 +98,7 @@ def register(request):
             validate_password(password)
         except ValidationError as e:
             messages.error(request, e.messages[0])
-            return render(request, "authentication/register.html", {
+            return render(request, "subtemplates/register.html", {
                 "username": username,
                 "email": email,
                 "password": password,
@@ -107,7 +107,7 @@ def register(request):
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
-            return render(request, "authentication/register.html", {
+            return render(request, "subtemplates/register.html", {
                 "username": username,
                 "email": email,
                 "password": password,
@@ -116,7 +116,7 @@ def register(request):
 
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email already used")
-            return render(request, "authentication/register.html", {
+            return render(request, "subtemplates/register.html", {
                 "username": username,
                 "email": email,
                 "password": password,
@@ -134,7 +134,7 @@ def register(request):
 
         return redirect("verify")
 
-    return render(request, "authentication/register.html")
+    return render(request, "subtemplates/register.html")
 
 
 OTP_EXPIRE_SECONDS = 10 * 60
@@ -225,7 +225,7 @@ def verify(request):
         else:
             messages.error(request, "Invalid verification code. Try again.")
 
-    return render(request, "authentication/verify.html")
+    return render(request, "subtemplates/verify.html")
 
 
 def login(request):
@@ -255,11 +255,11 @@ def login(request):
 
         else:
             messages.error(request, "Invalid username or password")
-            return render(request, "authentication/login.html", {
+            return render(request, "subtemplates/login.html", {
                 "username": username
             })
 
-    return render(request, "authentication/login.html")
+    return render(request, "subtemplates/login.html")
 
 
 def logout(request):
@@ -286,8 +286,8 @@ def forgot_password(request):
     if request.method == "POST":
         email = request.POST.get("email")
         if send_password_reset_email(request, email):
-            return render(request, 'authentication/password_reset_sent.html')
-    return render(request, 'authentication/forgot_password.html')
+            return render(request, 'subtemplates/password_reset_sent.html')
+    return render(request, 'subtemplates/forgot_password.html')
 
 
 def reset_password(request, uidb64, token):
@@ -304,14 +304,14 @@ def reset_password(request, uidb64, token):
                 validate_password(new_password, user)
             except ValidationError as e:
                 messages.error(request, e.messages[0])
-                return render(request, 'authentication/reset_password_form.html', {'validlink': True})
+                return render(request, 'subtemplates/reset_password_form.html',{'validlink': True})
 
             user.set_password(new_password)
             user.save()
             return redirect('login')
-        return render(request, 'authentication/reset_password_form.html', {'validlink': True})
+        return render(request, 'subtemplates/reset_password_form.html', {'validlink': True})
     else:
-        return render(request, 'authentication/reset_password_form.html', {'validlink': False})
+        return render(request, 'subtemplates/reset_password_form.html', {'validlink': False})
 
 # --- Dashboards with PrintJob / Invoice integration ---
 @login_required(login_url='login')
@@ -332,7 +332,7 @@ def staff_dashboard(request):
         'pending_invoices_count': pending_invoices_count,
     }
 
-    return render(request, 'authentication/staff_dashboard.html', context)
+    return render(request, 'subtemplates/staff_dashboard.html', context)
 
 
 @login_required(login_url='login')
@@ -354,7 +354,7 @@ def student_dashboard(request):
         'invoices': invoices,
         'unpaid_invoices_count': unpaid_invoices_count,  # pass to template
     }
-    return render(request, 'authentication/student_dashboard.html', context)
+    return render(request, 'subtemplates/student_dashboard.html', context)
 
 
 @login_required(login_url='login')
