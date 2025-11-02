@@ -345,11 +345,11 @@ def staff_dashboard(request):
 
     return render(request, 'subtemplates/staff_dashboard.html', context)
 
-MAX_PREVIEW_SIZE = 10 * 1024 * 1024  # 10 MB
-
+MAX_PREVIEW_SIZE = 25 * 1024 * 1024  # 25 MB
+# for testing only (prices are unofficial)
 PRICING = {
-    'bw': 1.00,  # ₱1.00 per page for Black & White
-    'color': 5.00,  # ₱5.00 per page for Color
+    'bw': 1.00,  # ₱1.00 per page for Black & White (dummy price)
+    'color': 5.00,  # ₱5.00 per page for Color (dummy price)
 }
 @login_required(login_url='login')
 @never_cache
