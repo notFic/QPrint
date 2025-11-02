@@ -1,117 +1,252 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
+{% block title %}Student Dashboard{% endblock %}
+
 {% block stylesheet %}
 <link rel="stylesheet" href="{% static 'qprint/css/student_dashboard.css' %}">
 {% endblock %}
 
-{% block sidebar_links %}
-<!-- Sidebar links – customizable per role -->
-<a href="{% url 'student_dashboard' %}">Dashboard</a>
-<a href="#my-jobs">My Print Jobs</a>
-<a href="#invoices">Invoices</a>
-<a href="#profile">Profile</a>
-<a href="#settings">Settings</a>
-<a href="#support">Contact Support</a>
-<a href="#terms">Terms of Service</a>
+{% block extra_js %}
+<script>
+  // Auto‑submit the **upload form only** (preview, no Supabase)
+  document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('print_file');
+    if (fileInput) {
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+          fileInput.closest('form').submit();
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}
 
-{% block welcome_header %}
-<!-- Original welcome message -->
-<h1>Welcome, Student {{ request.user.username|capfirst }}</h1>
-{% endblock %}
+{% block main_content %}
+<div class="container">
 
-{% block content %}
-<!-- === FULL ORIGINAL CONTENT GRID === -->
-<div class="content-grid">
-    <div class="left-col">
-        <div class="card">
-            <!-- File submission form (unchanged) -->
-            <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-                <h2>File Submission</h2>
-                <p>Upload your document and specify print details.</p>
+  <h1>Welcome, {{ user.get_full_name|default:user.username }}</h1>
 
-                <!-- Django messages (your original) -->
-                {% if messages %}
-                <div class="messages">
-                    {% for message in messages %}
-                    <p class="error-message">{{ message }}</p>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                <!-- File input -->
-                <div class="file-upload">
-                    <label for="fileInput">Choose PDF</label>
-                    <input type="file" id="fileInput" name="print_file" accept=".pdf"
-                           onchange="this.form.submit()">
-                </div>
-
-                <!-- File name display -->
-                {% if file_name %}
-                <div class="filename-display">
-                    <p><strong>Selected File:</strong></p>
-                    <span>{{ file_name }}</span>
-                </div>
-                {% endif %}
-
-                <!-- Print options -->
-                <div class="print-options">
-                    <div class="form-group">
-                        <label for="pages">Number of Pages</label>
-                        <input type="number" id="pages" name="pages"
-                               placeholder="e.g., 10" value="{{ form_data.pages }}">
-                    </div>
-                    <div class="form-group">
-                        <label for="paper_size">Paper Size</label>
-                        <select id="paper_size" name="paper_size">
-                            <option value="" {% if not form_data.paper_size %}selected{% endif %} disabled>Select a size</option>
-                            <option value="A4" {% if form_data.paper_size == 'A4' %}selected{% endif %}>A4 (8.27" x 11.69")</option>
-                            <option value="Letter" {% if form_data.paper_size == 'Letter' %}selected{% endif %}>Letter (8.5" x 11")</option>
-                            <option value="Long" {% if form_data.paper_size == 'Long' %}selected{% endif %}>Long (8.5" x 13")</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="color_option">Color Option</label>
-                        <select id="color_option" name="color_option">
-                            <option value="" {% if not form_data.color_option %}selected{% endif %} disabled>Select a color</option>
-                            <option value="bw" {% if form_data.color_option == 'bw' %}selected{% endif %}>Black & White</option>
-                            <option value="color" {% if form_data.color_option == 'color' %}selected{% endif %}>Color</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Calculate cost button -->
-                <button type="submit" name="action" value="calculate" class="secondary-btn">Calculate Cost</button>
-
-                <!-- Total cost display -->
-                {% if total_cost %}
-                <div class="total-cost-display">
-                    <h3>Total Estimated Cost:</h3>
-                    <span>₱{{ total_cost }}</span>
-                </div>
-                {% endif %}
-
-                <!-- Submit job button -->
-                <button type="submit" name="action" value="submit_job" class="primary-btn">Submit Print Job</button>
-            </form>
-        </div>
+  <!-- TOP ROW: History + Status -->
+  <div class="top-grid">
+    <div class="card history-card">
+      <h2>Print‑Job History</h2>
+      {% if print_jobs %}
+      <ul class="job-list">
+        {% for job in print_jobs %}
+        <li class="job-item" onclick="openModal('{{ job.id }}')">
+          <strong>{{ job.file_name }}</strong><br>
+          <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
+          <span class="badge badge-{{ job.status|lower }}">{{ job.status }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No jobs yet.</p>
+      {% endif %}
     </div>
 
-    <!-- Right column: PDF preview -->
-    <div class="right-col">
-        <div class="card">
-            <h2>File Preview</h2>
-            <div class="preview-box">
-                {% if pdf_data %}
-                <iframe class="pdf-iframe" src="data:application/pdf;base64,{{ pdf_data }}" title="PDF Preview"></iframe>
-                {% else %}
-                <div class="preview-placeholder"><p>Upload a PDF to see the preview here</p></div>
-                {% endif %}
-            </div>
+    <div class="card status-card">
+      <h2>Current Job Status</h2>
+      {% if latest_job %}
+      <div class="status-box">
+        <p><strong>{{ latest_job.file_name }}</strong></p>
+        <p class="muted">{{ latest_job.submitted_at|date:"M d, Y H:i" }}</p>
+        <div class="badge badge-{{ latest_job.status|lower }} big">
+          {{ latest_job.status }}
         </div>
+      </div>
+      {% else %}
+      <p class="muted">No active job.</p>
+      {% endif %}
     </div>
+  </div>
+
+  <!-- MAIN ROW: Submission + Preview -->
+  <div class="content-grid">
+
+    <!-- LEFT: File Submission -->
+    <div class="card submission-card">
+      <h2>File Submission</h2>
+      <p>Upload your PDF file for printing. Supported file type: PDF only.</p>
+
+      {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+        <p class="error-message">{{ message }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- 1. Upload form – ONLY preview (auto‑submit) -->
+      <form method="post" enctype="multipart/form-data" id="upload-form">
+        {% csrf_token %}
+        <div class="file-upload">
+          <label for="print_file">Choose File</label>
+          <input type="file" id="print_file" name="print_file" accept=".pdf">
+        </div>
+      </form>
+
+      <!-- Show filename after preview -->
+      {% if file_name %}
+      <div class="filename-display">
+        <p>Uploaded File:</p>
+        <span>{{ file_name }}</span>
+        <small>({{ total_pages }} pages detected)</small>
+      </div>
+      {% endif %}
+
+      <!-- 2. Options + Submit form -->
+      <form method="post" id="options-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="calculate">
+
+        <!-- CLEAR ALL – small, right‑aligned, above Number of Pages -->
+        {% if file_name %}
+        <div style="text-align: right; margin-bottom: 12px;">
+          <button type="button" class="secondary-btn clear-btn"
+                  style="font-size:0.85rem; padding:6px 12px;">
+            Clear All
+          </button>
+        </div>
+        {% endif %}
+
+        <div class="print-options">
+          <div class="form-group">
+            <label for="pages">Number of Pages</label>
+            <input type="number" id="pages" name="pages" min="1"
+                   value="{{ total_pages|default:'' }}" readonly>
+          </div>
+
+          <div class="form-group">
+            <label for="paper_size">Paper Size</label>
+            <select id="paper_size" name="paper_size" required>
+              <option value="" {% if not form_data.paper_size %}selected{% endif %}>Select size</option>
+              <option value="A4" {% if form_data.paper_size == 'A4' %}selected{% endif %}>A4</option>
+              <option value="Letter" {% if form_data.paper_size == 'Letter' %}selected{% endif %}>Letter</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="color_option">Color Option</label>
+            <select id="color_option" name="color_option" required>
+              <option value="" {% if not form_data.color_option %}selected{% endif %}>Select option</option>
+              <option value="bw" {% if form_data.color_option == 'bw' %}selected{% endif %}>Black & White</option>
+              <option value="color" {% if form_data.color_option == 'color' %}selected{% endif %}>Color</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="secondary-btn">Calculate Cost</button>
+
+        {% if total_cost %}
+        <div class="total-cost-display">
+          <h3>Total Cost</h3>
+          <span>₱{{ total_cost }}</span>
+        </div>
+        <button type="submit" name="action" value="submit_job" class="primary-btn">
+          Proceed to Payment
+        </button>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- RIGHT: Document Preview -->
+    <div class="card preview-card">
+      <h2>Document Preview</h2>
+      <div class="preview-box">
+        {% if pdf_data %}
+        <iframe class="pdf-iframe"
+                src="data:application/pdf;base64,{{ pdf_data }}"
+                title="PDF Preview"></iframe>
+        {% else %}
+        <div class="preview-placeholder">
+          <p>No file uploaded yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL -->
+  <div id="jobModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">×</span>
+      <div class="modal-grid">
+        <div class="modal-details">
+          <h3>Order Receipt</h3>
+          <p><strong>File:</strong> <span id="modal-file"></span></p>
+          <p><strong>Pages:</strong> <span id="modal-pages"></span></p>
+          <p><strong>Paper:</strong> <span id="modal-paper"></span></p>
+          <p><strong>Color:</strong> <span id="modal-color"></span></p>
+          <p><strong>Cost:</strong> ₱<span id="modal-cost"></span></p>
+          <p><strong>Status:</strong> <span id="modal-status"></span></p>
+
+          <form method="post" id="cancelForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="cancel_job">
+            <input type="hidden" name="job_id" id="cancel-job-id">
+            <button type="submit" id="cancelBtn" class="danger-btn">Cancel Print Job</button>
+          </form>
+        </div>
+        <div class="modal-preview">
+          <iframe id="pdfPreview" width="100%" height="500"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
-<!-- === END OF ORIGINAL CONTENT === -->
+
+<!-- CLEAR ALL SCRIPT -->
+<script>
+  document.querySelector('.clear-btn')?.addEventListener('click', () => {
+    if (confirm('Clear all fields and remove uploaded file?')) {
+      fetch("{% url 'student_dashboard' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        body: new URLSearchParams({ 'action': 'clear' })
+      }).then(() => location.reload());
+    }
+  });
+</script>
+
+<!-- MODAL SCRIPT -->
+<script>
+function openModal(jobId) {
+  fetch(`/api/job/${jobId}/`)
+    .then(r => {
+      if (!r.ok) throw new Error('Job not found');
+      return r.json();
+    })
+    .then(job => {
+      document.getElementById('modal-file').textContent = job.file_name;
+      document.getElementById('modal-pages').textContent = job.pages;
+      document.getElementById('modal-paper').textContent = job.paper_size;
+      document.getElementById('modal-color').textContent = job.color_option;
+      document.getElementById('modal-cost').textContent = job.total_cost;
+      document.getElementById('modal-status').textContent = job.status;
+      document.getElementById('pdfPreview').src = job.file_url;
+      document.getElementById('cancel-job-id').value = job.id;
+      document.getElementById('cancelBtn').style.display = job.status === 'Pending' ? 'block' : 'none';
+      document.getElementById('jobModal').style.display = 'block';
+    })
+    .catch(err => {
+      console.error('Modal error:', err);
+      alert('Could not load job details.');
+    });
+}
+
+function closeModal() {
+  document.getElementById('jobModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = e => {
+  const modal = document.getElementById('jobModal');
+  if (e.target === modal) closeModal();
+};
+</script>
 {% endblock %}
