@@ -427,6 +427,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             else:
                 price = PRICING.get(color, 0)
                 total = price * int(pages)
+                request.session['total_cost'] = total  # store in session
                 context['total_cost'] = f"{total:.2f}"
 
         # --- SUBMIT JOB: Upload to Supabase ---
@@ -439,7 +440,8 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             pdf_data = base64.b64decode(request.session['pdf_data'])
             file_name = request.session['file_name']
             page_count = request.session['total_pages']
-
+            total_cost = request.session.get('total_cost', 0.0)
+            
             # Upload to Supabase
             file_id = str(uuid.uuid4())
             path = f"{request.user.id}/{file_id}/{file_name}"
@@ -457,7 +459,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 'pages': page_count,
                 'paper_size': context['form_data']['paper_size'],
                 'color_option': context['form_data']['color_option'],
-                'total_cost': context['total_cost'] or 0.0,
+                'total_cost': f"{float(total_cost):.2f}",
                 'status': 'Pending',
                 'submitted_at': 'now()'
             }
