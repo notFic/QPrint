@@ -324,33 +324,34 @@ def reset_password(request, uidb64, token):
     else:
         return render(request, 'subtemplates/reset_password_form.html', {'validlink': False})
 
-# --- Dashboards with PrintJob / Invoice integration ---
+
 @login_required(login_url='login')
 def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
 
-    # print_jobs = PrintJob.objects.all().order_by('-submitted_at')
-    # invoices = Invoice.objects.all().order_by('-created_at')
-    # pending_count = PrintJob.objects.filter(status='Pending').count()
-    # pending_invoices_count = Invoice.objects.filter(status='Pending').count()
+    jobs_resp = supabase.table('print_jobs')\
+        .select('*')\
+        .order('submitted_at', desc=True)\
+        .execute()
+
+    jobs = jobs_resp.data or []
 
     context = {
         'user': request.user,
-        # 'print_jobs': print_jobs,
-        # 'invoices': invoices,
-        # 'pending_count': pending_count,
-        # 'pending_invoices_count': pending_invoices_count,
+        'print_jobs': jobs,
     }
 
     return render(request, 'subtemplates/staff_dashboard.html', context)
 
+
 MAX_PREVIEW_SIZE = 25 * 1024 * 1024  # 25 MB
 # for testing only (prices are unofficial)
 PRICING = {
-    'bw': 1.00,  # ₱1.00 per page for Black & White (dummy price)
-    'color': 5.00,  # ₱5.00 per page for Color (dummy price)
+    'bw': {'A4': 3.00, 'Letter': 4.00},
+    'color': {'A4': 5.00, 'Letter': 6.50}
 }
+
 @login_required(login_url='login')
 @never_cache
 def student_dashboard(request: HttpRequest) -> HttpResponse:
@@ -362,7 +363,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         'total_cost': None,
     }
 
-    # === FETCH JOBS FROM SUPABASE ===
+    # --- FETCH JOBS FROM SUPABASE ---
     jobs_resp = supabase.table('print_jobs')\
         .select('*')\
         .eq('user_id', request.user.id)\
@@ -377,24 +378,21 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         action = request.POST.get('action')
 
-        # --- MANUAL UPLOAD: Preview only (no Supabase) ---
         if 'print_file' in request.FILES:
             file = request.FILES['print_file']
+
             if not file.name.lower().endswith('.pdf'):
                 messages.error(request, "Only PDF files allowed.")
                 return redirect('student_dashboard')
 
-            # File size limit: 25 MB
             if file.size > 25 * 1024 * 1024:
                 messages.error(request, "File size must be 25 MB or less.")
                 return redirect('student_dashboard')
 
-            # Count pages
             pdf_file = BytesIO(file.read())
             reader = PyPDF2.PdfReader(pdf_file)
             page_count = len(reader.pages)
 
-            # Save to session for preview
             pdf_file.seek(0)
             request.session['pdf_data'] = base64.b64encode(pdf_file.read()).decode()
             request.session['file_name'] = file.name
@@ -403,7 +401,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             messages.success(request, "File preview ready.")
             return redirect('student_dashboard')
 
-        # --- CLEAR ALL ---
+        # --- CLEAR ---
         if action == 'clear':
             for k in ['pdf_data', 'file_name', 'total_pages']:
                 request.session.pop(k, None)
@@ -425,32 +423,31 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             if not all([pages, paper, color]):
                 messages.error(request, "Fill all fields.")
             else:
-                price = PRICING.get(color, 0)
+                price = PRICING[color][paper]
                 total = price * int(pages)
-                request.session['total_cost'] = total  # store in session
+                request.session['total_cost'] = total
                 context['total_cost'] = f"{total:.2f}"
 
-        # --- SUBMIT JOB: Upload to Supabase ---
+        # --- SUBMIT JOB ---
         if action == 'submit_job':
             if not request.session.get('pdf_data'):
                 messages.error(request, "Upload a file first.")
                 return redirect('student_dashboard')
 
-            # Reconstruct file from session
             pdf_data = base64.b64decode(request.session['pdf_data'])
             file_name = request.session['file_name']
             page_count = request.session['total_pages']
             total_cost = request.session.get('total_cost', 0.0)
-            
-            # Upload to Supabase
+
             file_id = str(uuid.uuid4())
             path = f"{request.user.id}/{file_id}/{file_name}"
+
             supabase.storage.from_(bucket).upload(
                 path, pdf_data, {'content-type': 'application/pdf'}
             )
             file_url = supabase.storage.from_(bucket).get_public_url(path)
 
-            # Save job
+            # Save record
             job_data = {
                 'user_id': request.user.id,
                 'username': request.user.username,
@@ -461,13 +458,18 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 'color_option': context['form_data']['color_option'],
                 'total_cost': f"{float(total_cost):.2f}",
                 'status': 'Pending',
+                'payment_status': 'Unpaid',
+                'payment_proof_url': None,
                 'submitted_at': 'now()'
             }
+
             supabase.table('print_jobs').insert(job_data).execute()
 
-            messages.success(request, "Job submitted!")
+            # Clear session
             for k in ['pdf_data', 'file_name', 'total_pages']:
                 request.session.pop(k, None)
+
+            messages.success(request, "Job submitted!")
             return redirect('student_dashboard')
 
         # --- CANCEL JOB ---
@@ -481,15 +483,43 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             job = job_resp.data[0] if job_resp.data else None
 
             if job and job['status'] == 'Pending':
-                # Delete file
                 path = '/'.join(job['file_url'].split('/')[-2:])
                 supabase.storage.from_(bucket).remove([path])
-                # Delete record
                 supabase.table('print_jobs').delete().eq('id', job_id).execute()
                 messages.success(request, "Job cancelled.")
             else:
                 messages.error(request, "Cannot cancel.")
             return redirect('student_dashboard')
+
+        if action == 'upload_payment_proof_modal':
+            job_id = request.POST.get('job_id')
+
+            img = request.FILES.get("payment_proof")
+            if not img:
+                messages.error(request, "Please upload an image.")
+                return redirect("student_dashboard")
+
+            if not img.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                messages.error(request, "Only JPG or PNG allowed.")
+                return redirect("student_dashboard")
+
+            proof_id = str(uuid.uuid4())
+            proof_path = f"{request.user.id}/{proof_id}/{img.name}"
+
+            supabase.storage.from_(bucket).upload(
+                proof_path,
+                img.read(),
+                {"content-type": img.content_type}
+            )
+            proof_url = supabase.storage.from_(bucket).get_public_url(proof_path)
+
+            supabase.table("print_jobs").update({
+                "payment_proof_url": proof_url,
+                "payment_status": "Pending Review"
+            }).eq("id", job_id).execute()
+
+            messages.success(request, "Payment proof uploaded.")
+            return redirect("student_dashboard")
 
     else:
         if not request.session.get('pdf_data'):
@@ -498,9 +528,47 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
     return render(request, 'subtemplates/student_dashboard.html', context)
 
-# ──────── API for modal ─────────
+# For the modals
 def get_job_detail(request, job_id):
     resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
     if resp.data:
         return JsonResponse(resp.data[0])
     return JsonResponse({'error': 'Not found'}, status=404)
+
+@login_required
+def staff_update_payment(request):
+    if request.method == "POST" and request.user.is_staff:
+        job_id = request.POST.get("job_id")
+        action = request.POST.get("action")
+
+        new_status = "Accepted" if action == "accept" else "Rejected"
+
+        supabase.table("print_jobs").update({
+            "payment_status": new_status
+        }).eq("id", job_id).execute()
+
+        messages.success(request, f"Payment proof {new_status.lower()}.")
+        return redirect("staff_dashboard")
+
+
+@login_required
+def staff_confirm_job(request):
+    if request.method == "POST" and request.user.is_staff:
+        job_id = request.POST.get("job_id")
+
+        # only allow if payment is accepted
+        job = supabase.table("print_jobs")\
+            .select("payment_status")\
+            .eq("id", job_id)\
+            .execute().data[0]
+
+        if job["payment_status"] != "Accepted":
+            messages.error(request, "Cannot confirm. Payment has not been accepted.")
+            return redirect("staff_dashboard")
+
+        supabase.table("print_jobs").update({
+            "status": "Ready"
+        }).eq("id", job_id).execute()
+
+        messages.success(request, "Job marked as Ready for pickup.")
+        return redirect("staff_dashboard")
