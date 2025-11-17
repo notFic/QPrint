@@ -9,7 +9,6 @@
 
 {% block extra_js %}
 <script>
-  // Auto‑submit the **upload form only** (preview, no Supabase)
   document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('print_file');
     if (fileInput) {
@@ -29,15 +28,25 @@
   <h1>Welcome, {{ user.get_full_name|default:user.username }}</h1>
 
   <div class="top-grid">
+
+    <!-- HISTORY -->
     <div class="card history-card">
-      <h2>Print‑Job History</h2>
+      <h2>Print-Job History</h2>
+
       {% if print_jobs %}
       <ul class="job-list">
         {% for job in print_jobs %}
         <li class="job-item" onclick="openModal('{{ job.id }}')">
-          <strong>{{ job.file_name }}</strong><br>
-          <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
-          <span class="badge badge-{{ job.status|lower }}">{{ job.status }}</span>
+
+          <div>
+            <strong>{{ job.file_name }}</strong><br>
+            <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
+          </div>
+
+          <span class="badge badge-{{ job.status|lower }}">
+            {{ job.status }}
+          </span>
+
         </li>
         {% endfor %}
       </ul>
@@ -46,24 +55,30 @@
       {% endif %}
     </div>
 
+    <!-- CURRENT JOB STATUS -->
     <div class="card status-card">
       <h2>Current Job Status</h2>
+
       {% if latest_job %}
       <div class="status-box">
         <p><strong>{{ latest_job.file_name }}</strong></p>
         <p class="muted">{{ latest_job.submitted_at|date:"M d, Y H:i" }}</p>
+
         <div class="badge badge-{{ latest_job.status|lower }} big">
           {{ latest_job.status }}
         </div>
       </div>
+
       {% else %}
       <p class="muted">No active job.</p>
       {% endif %}
     </div>
+
   </div>
 
   <div class="content-grid">
 
+    <!-- FILE SUBMISSION -->
     <div class="card submission-card">
       <h2>File Submission</h2>
       <p>Upload your PDF file for printing. Supported file type: PDF only.</p>
@@ -138,6 +153,7 @@
           <h3>Total Cost</h3>
           <span>₱{{ total_cost }}</span>
         </div>
+
         <button type="submit" name="action" value="submit_job" class="primary-btn">
           Proceed to Payment
         </button>
@@ -145,6 +161,7 @@
       </form>
     </div>
 
+    <!-- PDF PREVIEW -->
     <div class="card preview-card">
       <h2>Document Preview</h2>
       <div class="preview-box">
@@ -162,70 +179,96 @@
 
   </div>
 
+  <!-- JOB MODAL -->
   <div id="jobModal" class="modal">
-  <div class="modal-content">
-    <span class="close" onclick="closeModal()">×</span>
+    <div class="modal-content">
 
-    <div class="modal-grid">
+      <span class="close" onclick="closeModal()">×</span>
 
-      <div class="modal-details">
-        <h3>Order Receipt</h3>
+      <div class="modal-grid">
 
-        <p><strong>File:</strong> <span id="modal-file"></span></p>
-        <p><strong>Pages:</strong> <span id="modal-pages"></span></p>
-        <p><strong>Paper:</strong> <span id="modal-paper"></span></p>
-        <p><strong>Color:</strong> <span id="modal-color"></span></p>
-        <p><strong>Cost:</strong> ₱<span id="modal-cost"></span></p>
-        <p><strong>Status:</strong> <span id="modal-status"></span></p>
+        <div class="modal-details">
+          <h3>Order Receipt</h3>
 
-        <!-- cancel job -->
-        <form method="post" id="cancelForm">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="cancel_job">
-          <input type="hidden" name="job_id" id="cancel-job-id">
-          <button type="submit" id="cancelBtn" class="danger-btn">Cancel Print Job</button>
-        </form>
+          <p><strong>File:</strong> <span id="modal-file"></span></p>
+          <p><strong>Pages:</strong> <span id="modal-pages"></span></p>
+          <p><strong>Paper:</strong> <span id="modal-paper"></span></p>
+          <p><strong>Color:</strong> <span id="modal-color"></span></p>
+          <p><strong>Cost:</strong> ₱<span id="modal-cost"></span></p>
 
-        <hr style="margin: 18px 0;">
+          <p>
+            <strong>Status:</strong>
+            <span id="modal-status" class="badge"></span>
+          </p>
 
-        <h3>Payment</h3>
-        <p id="no-proof-text" class="muted" style="display: none;">
-          No payment proof submitted yet.
-        </p>
+          <!-- STATUS MESSAGE -->
+          <p id="modal-status-message" class="status-message" style="display:none;"></p>
 
-        <!-- view proof -->
-        <p id="payment-proof-link" style="display:none;">
-          <strong>Uploaded Proof:</strong>
-          <a id="proof-url" href="#" target="_blank">View uploaded payment proof</a>
-        </p>
+          <form method="post" id="cancelForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="cancel_job">
+            <input type="hidden" name="job_id" id="cancel-job-id">
+            <button type="submit" id="cancelBtn" class="danger-btn">Cancel Print Job</button>
+          </form>
 
-        <!-- upload Form -->
-        <form method="post" enctype="multipart/form-data" id="paymentForm" style="display:none;">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="upload_payment_proof_modal">
-          <input type="hidden" name="job_id" id="payment-job-id">
+          <hr style="margin: 18px 0;">
 
-          <input type="file" name="payment_proof" accept="image/*" required>
-          <button type="submit" class="primary-btn" style="margin-top:12px;">
-            Upload Payment Proof
+          <h3>Payment</h3>
+          <p id="no-proof-text" class="muted" style="display:none;">No payment proof submitted yet.</p>
+
+          <p id="payment-proof-link" style="display:none;">
+            <strong>Uploaded Proof:</strong>
+            <a id="proof-url" href="#" target="_blank">View uploaded payment proof</a>
+          </p>
+
+          <form method="post" enctype="multipart/form-data" id="paymentForm" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload_payment_proof_modal">
+            <input type="hidden" name="job_id" id="payment-job-id">
+            <input type="file" name="payment_proof" accept="image/*" required>
+            <button type="submit" class="primary-btn" style="margin-top:12px;">Upload Payment Proof</button>
+          </form>
+
+          <!-- QR CODE BUTTON -->
+          <button type="button" class="secondary-btn" style="margin-top:12px;"
+                  onclick="openQRModal(document.getElementById('modal-file').textContent, document.getElementById('modal-cost').textContent)">
+            View QR Code
           </button>
-        </form>
 
-      </div>
+        </div>
 
-      <!-- pdf preview -->
-      <div class="modal-preview">
-        <iframe id="pdfPreview" width="100%" height="500"></iframe>
-      </div>
+        <div class="modal-preview">
+          <iframe id="pdfPreview" width="100%" height="500"></iframe>
+        </div>
 
       </div>
     </div>
   </div>
 
+  <!-- QR CODE MODAL -->
+  <div id="qrModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeQRModal()">×</span>
+
+      <div class="qr-modal-body">
+        <h3>Scan the QR code</h3>
+        <p>QPrint utilizes GCash for payment. Don't forget to take a picture and upload the proof of payment later!</p>
+
+        <div style="text-align:center; margin: 20px 0;">
+          <img src="{% static 'qprint/images/qrcode.png' %}" alt="QR Code" style="max-width:300px; width:100%; height:auto;"/>
+        </div>
+
+        <hr>
+
+        <p><strong>File:</strong> <span id="qr-file-name"></span></p>
+        <p><strong>Price:</strong> ₱<span id="qr-file-price"></span></p>
+      </div>
+    </div>
+  </div>
 
 </div>
 
-<!-- clear all -->
+<!-- CLEAR ALL -->
 <script>
   document.querySelector('.clear-btn')?.addEventListener('click', () => {
     if (confirm('Clear all fields and remove uploaded file?')) {
@@ -249,33 +292,66 @@ function openModal(jobId) {
       document.getElementById('modal-paper').textContent = job.paper_size;
       document.getElementById('modal-color').textContent = job.color_option;
       document.getElementById('modal-cost').textContent = job.total_cost;
-      document.getElementById('modal-status').textContent = job.status;
 
+      // STATUS BADGE
+      const statusEl = document.getElementById('modal-status');
+      const cleanStatus = job.status.toLowerCase().replace(/\s+/g, '-');
+      statusEl.textContent = job.status;
+      statusEl.className = `badge badge-${cleanStatus}`;
+
+      // STATUS MESSAGE
+      const msg = document.getElementById('modal-status-message');
+      msg.style.display = "block";
+
+      if (job.status === "Unpaid") {
+        msg.textContent = "Your print job must be paid before it gets printed, please settle your dues.";
+      }
+      else if (job.status === "Pending") {
+        msg.textContent = "Your print job is being queued, please wait patiently.";
+      }
+      else if (job.status === "Ready") {
+        msg.textContent = "Your print is ready to be picked up! Please head to the CIT-U cafeteria.";
+      }
+      else if (job.status === "Completed") {
+        msg.textContent = "This print job has been successfully completed.";
+      }
+      else if (job.status === "Cancelled") {
+        msg.textContent = "This print job was cancelled.";
+      }
+
+      // PDF PREVIEW
       document.getElementById('pdfPreview').src = job.file_url;
 
-      // Cancel job fields
-      document.getElementById('cancel-job-id').value = job.id;
-      document.getElementById('cancelBtn').style.display =
-        job.status === "Pending" ? "block" : "none";
+      // CANCEL BUTTON
+      const cancelBtn = document.getElementById('cancelBtn');
+      const cancelJobIdInput = document.getElementById('cancel-job-id');
 
-      <!-- payment -->
+        if (job.status.toLowerCase() === "unpaid") {
+            cancelBtn.style.display = "block";
+            cancelBtn.disabled = false;
+            cancelBtn.style.opacity = 1;
+            cancelBtn.style.cursor = "pointer";
+            cancelJobIdInput.value = job.id;
+        } else if (job.status.toLowerCase() === "pending" || job.status.toLowerCase() === "ready") {
+            cancelBtn.style.display = "none";
+        } else {
+            cancelBtn.style.display = "none"; // for completed, cancelled, or any other status
+        }
+
+      // PAYMENT LOGIC
       const paymentForm = document.getElementById('paymentForm');
       const proofLink = document.getElementById('payment-proof-link');
-      const proofUrl = document.getElementById('proof-url');
       const noProof = document.getElementById('no-proof-text');
-      const paymentJobId = document.getElementById('payment-job-id');
+      const proofUrl = document.getElementById('proof-url');
 
-      paymentJobId.value = job.id;
+      document.getElementById('payment-job-id').value = job.id;
 
       if (job.payment_proof_url) {
-        // Show the link to view payment proof
         proofLink.style.display = "block";
         noProof.style.display = "none";
         paymentForm.style.display = "none";
         proofUrl.href = job.payment_proof_url;
-      }
-      else {
-        // No proof submitted yet
+      } else {
         noProof.style.display = "block";
         paymentForm.style.display = "block";
         proofLink.style.display = "none";
@@ -293,10 +369,20 @@ function closeModal() {
   document.getElementById('jobModal').style.display = 'none';
 }
 
-// Close modal when clicking outside
+function openQRModal(fileName, price) {
+  document.getElementById('qr-file-name').textContent = fileName;
+  document.getElementById('qr-file-price').textContent = price;
+  document.getElementById('qrModal').style.display = 'block';
+}
+
+function closeQRModal() {
+  document.getElementById('qrModal').style.display = 'none';
+}
+
+// Close modals when clicking outside
 window.onclick = e => {
-  const modal = document.getElementById('jobModal');
-  if (e.target === modal) closeModal();
+  if (e.target === document.getElementById('jobModal')) closeModal();
+  if (e.target === document.getElementById('qrModal')) closeQRModal();
 };
 </script>
 

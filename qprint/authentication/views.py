@@ -457,7 +457,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 'paper_size': context['form_data']['paper_size'],
                 'color_option': context['form_data']['color_option'],
                 'total_cost': f"{float(total_cost):.2f}",
-                'status': 'Pending',
+                'status': 'Unpaid',
                 'payment_status': 'Unpaid',
                 'payment_proof_url': None,
                 'submitted_at': 'now()'
@@ -515,7 +515,8 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
             supabase.table("print_jobs").update({
                 "payment_proof_url": proof_url,
-                "payment_status": "Pending Review"
+                "payment_status": "Pending Review",
+                "status": "Pending",
             }).eq("id", job_id).execute()
 
             messages.success(request, "Payment proof uploaded.")
