@@ -140,10 +140,6 @@
   padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
 }
 .big { font-size: 1.2rem; padding: 8px 16px; }
-.badge-pending    { background:#fef3c7; color:#92400e; }
-.badge-printing   { background:#bfdbfe; color:#1e40af; }
-.badge-completed  { background:#dcfce7; color:#166534; }
-.badge-cancelled  { background:#f3f4f6; color:#6b7280; }
 
 .modal {
   display: none; position: fixed; z-index: 1000; left: 0; top: 0;
@@ -176,3 +172,14 @@
   .modal-grid { grid-template-columns: 1fr; }
   .modal-content { margin: 10% auto; }
 }
+
+.status-message {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #374151;
+  background: #f9fafb;
+  padding: 8px 12px;
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+}
+
