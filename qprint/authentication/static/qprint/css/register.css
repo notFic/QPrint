@@ -239,3 +239,11 @@ body {
     }
     .form-title { font-size: 1.75rem; }
 }
+
+.divider {
+    width: 80%;
+    max-width: 280px;
+    height: 1px;
+    background-color: #f4cccc;
+    margin: 0.75rem auto;
+}

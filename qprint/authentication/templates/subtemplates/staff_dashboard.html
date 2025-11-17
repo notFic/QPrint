@@ -1,12 +1,108 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
-{% block title %}Q-Print Staff Dashboard{% endblock %}
+{% block title %}Staff Dashboard{% endblock %}
 
 {% block stylesheet %}
 <link rel="stylesheet" href="{% static 'qprint/css/staff_dashboard.css' %}">
 {% endblock %}
 
+{% block sidebar_links %}
+<a href="#jobs">Print Job Queue</a>
+<a href="#reports">Reports</a>
+<a href="#settings">Settings</a>
+{% endblock %}
+
 {% block main_content %}
-<!-- staff content will go here -->
+<div class="container">
+  <h1>Welcome, Staff member {{ user.get_full_name|default:user.username }}</h1>
+
+  <div class="card">
+    <h2>Print Job Queue</h2>
+
+    {% if print_jobs %}
+      <table class="job-table">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>User</th>
+                <th>Pages</th>
+                <th>Paper</th>
+                <th>Color</th>
+                <th>Status</th>
+                <th>Proof of Payment</th>
+                <th>Payment Status</th>
+                <th>Payment Control</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for job in print_jobs %}
+            <tr>
+                <td>{{ job.file_name }}</td>
+                <td>{{ job.username }}</td>
+                <td>{{ job.pages }}</td>
+                <td>{{ job.paper_size }}</td>
+                <td>{{ job.color_option|title }}</td>
+
+                <td>
+                    <span class="badge badge-{{ job.status|lower }}">
+                        {{ job.status }}
+                    </span>
+                </td>
+
+                <td>
+                    {% if job.payment_proof_url %}
+                        <a href="{{ job.payment_proof_url }}"
+                           class="proof-link"
+                           target="_blank"><strong style="color:#15803d;">View Proof</strong></a>
+                    {% else %}
+                        <span style="color:#dc2626; font-weight:600;">None uploaded</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <span class="badge badge-{{ job.payment_status|lower|slugify }}">
+                        {{ job.payment_status }}
+                    </span>
+                </td>
+
+                <td>
+                    {% if job.payment_proof_url and job.payment_status == "Pending Review" %}
+                        <form method="POST" action="{% url 'staff_update_payment' %}" style="display:inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="job_id" value="{{ job.id }}">
+                            <button name="action" value="accept" class="btn-success btn-small">Accept</button>
+                        </form>
+
+                        <form method="POST" action="{% url 'staff_update_payment' %}" style="display:inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="job_id" value="{{ job.id }}">
+                            <button name="action" value="reject" class="btn-danger btn-small">Reject</button>
+                        </form>
+                    {% endif %}
+
+                    <form method="POST" action="{% url 'staff_confirm_job' %}" style="margin-top:6px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="job_id" value="{{ job.id }}">
+
+                        <button class="btn-primary btn-small"
+                            {% if job.payment_status != "Accepted" %}
+                                disabled
+                            {% endif %}
+                        >
+                            Mark Ready
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% else %}
+      <p class="muted">No print jobs found.</p>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
