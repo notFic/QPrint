@@ -12,4 +12,7 @@ urlpatterns = [
     path('reset-password/<uidb64>/<token>/', views.reset_password, name='reset_password'),
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('api/job/<uuid:job_id>/', views.get_job_detail, name='job_detail'),
+    path("staff/update-payment/", views.staff_update_payment, name="staff_update_payment"),
+    path("staff/confirm-job/", views.staff_confirm_job, name="staff_confirm_job"),
+
 ]
