@@ -15,4 +15,8 @@ urlpatterns = [
     path("staff/update-payment/", views.staff_update_payment, name="staff_update_payment"),
     path("staff/confirm-job/", views.staff_confirm_job, name="staff_confirm_job"),
 
+    # Invoice URLs
+    path("invoices/", views.invoice_list, name="invoice_list"),
+    path("invoices/<uuid:job_id>/", views.view_invoice, name="view_invoice"),
+    path("api/check-print-status/<uuid:job_id>/", views.check_print_status, name="check_print_status"),
 ]
