@@ -183,3 +183,171 @@
   border-radius: 6px;
 }
 
+/* History Card Styles */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.history-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.history-count {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 16px;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+  background: #fafbfc;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-item:hover {
+  background: #f8fafc;
+  border-color: #e5e7eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.history-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-main {
+  flex: 1;
+}
+
+.history-main strong {
+  display: block;
+  color: #111827;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.history-main small {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.no-history {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--muted);
+}
+
+/* Invoice Card Styles */
+.invoice-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.invoice-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.invoice-number {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.invoice-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invoice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.invoice-row:last-child {
+  border-bottom: none;
+}
+
+.invoice-row.total-row {
+  border-top: 2px solid #e5e7eb;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-weight: 600;
+}
+
+.label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.value {
+  color: #111827;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.total-cost {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-completed { background: #d1fae5; color: #065f46; }
+.status-processing { background: #fef3c7; color: #92400e; }
+.status-pending { background: #e5e7eb; color: #374151; }
+.status-unpaid { background: #fee2e2; color: #991b1b; }
+.status-ready { background: #dbeafe; color: #1e40af; }
+.status-failed { background: #fee2e2; color: #991b1b; }
+
+.no-invoice {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--muted);
+}

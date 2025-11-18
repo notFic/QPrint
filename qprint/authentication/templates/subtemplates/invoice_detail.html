@@ -1,0 +1,174 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Invoice {{ invoice.invoice_number }} - QPrint{% endblock %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/student_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'qprint/css/invoice.css' %}">
+{% endblock %}
+
+{% block main_content %}
+<div class="container">
+    <a href="{% url 'invoice_list' %}" class="back-btn">← Back to Invoice List</a>
+    
+    <div class="invoice-detail-container">
+        <!-- Header -->
+        <div class="invoice-header-detail">
+            <div>
+                <h1 class="invoice-title">Printing Invoice</h1>
+                <div class="invoice-number-large">{{ invoice.invoice_number|default:"Invoice Details" }}</div>
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-status-large">
+                    <span class="status-badge status-{{ invoice.status|lower|slugify }} big">
+                        {{ invoice.status }}
+                    </span>
+                </div>
+                <div style="margin-top: 8px; color: #6b7280;">
+                    Issued: {{ invoice.invoice_date|date:"M d, Y" }}
+                </div>
+            </div>
+        </div>
+
+        {% if invoice.status == 'Overdue' %}
+        <div class="overdue-warning">
+            ⚠️ This invoice is overdue. Please contact support to resolve this issue.
+        </div>
+        {% endif %}
+
+        <!-- Invoice Details -->
+        <div class="invoice-grid">
+            <!-- Job Information -->
+            <div class="invoice-section">
+                <h3 class="section-title">Job Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Document:</span>
+                    <span class="detail-value">{{ invoice.file_name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Pages:</span>
+                    <span class="detail-value">{{ invoice.pages }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Paper Size:</span>
+                    <span class="detail-value">{{ invoice.paper_size }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Color Option:</span>
+                    <span class="detail-value">
+                        {% if invoice.color_option == 'bw' %}Black & White{% else %}Color{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Submitted:</span>
+                    <span class="detail-value">{{ invoice.submitted_at|date:"M d, Y H:i" }}</span>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="invoice-section">
+                <h3 class="section-title">Payment Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Status:</span>
+                    <span class="detail-value">{{ invoice.payment_status }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Due Date:</span>
+                    <span class="detail-value {% if invoice.status == 'Overdue' %}overdue-text{% endif %}">
+                        {{ invoice.due_date|date:"M d, Y H:i" }}
+                        {% if invoice.status == 'Overdue' %} ⚠️{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Invoice Paid:</span>
+                    <span class="detail-value">
+                        {% if invoice.is_paid %}Yes ✅{% else %}No ❌{% endif %}
+                    </span>
+                </div>
+                {% if invoice.payment_proof_url %}
+                <div class="detail-row">
+                    <span class="detail-label">Payment Proof:</span>
+                    <span class="detail-value">
+                        <a href="{{ invoice.payment_proof_url }}" target="_blank" class="action-btn view-btn">
+                            View Proof
+                        </a>
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Total Amount -->
+        <div class="total-section">
+            <div class="total-row">
+                <span>Total Amount:</span>
+                <span class="total-amount">₱{{ invoice.total_cost }}</span>
+            </div>
+        </div>
+
+        <!-- Print Status -->
+        <div class="print-status {% if can_print %}print-allowed{% else %}print-denied{% endif %}">
+            {% if can_print %}
+            <strong>✅ Ready for Printing</strong>
+            <p>This job can be printed. Please proceed to the printing station.</p>
+            {% else %}
+            <strong>❌ Printing Restricted</strong>
+            <p>{{ print_message }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="invoice-actions-detail">
+            <a href="{% url 'student_dashboard' %}" class="secondary-btn">Back to Dashboard</a>
+            <a href="{% url 'invoice_list' %}" class="secondary-btn">View All Invoices</a>
+            
+            {% if not invoice.is_paid and invoice.status != 'Overdue' and invoice.status != 'Cancelled' %}
+            <button type="button" class="primary-btn" 
+                    onclick="openQRModal('{{ invoice.file_name }}', '{{ invoice.total_cost }}')">
+                Pay Now
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div id="qrModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeQRModal()">×</span>
+        <div class="qr-modal-body">
+            <h3>Scan the QR code</h3>
+            <p>QPrint utilizes GCash for payment. Don't forget to take a picture and upload the proof of payment later!</p>
+            <div style="text-align:center; margin: 20px 0;">
+                <img src="{% static 'qprint/images/qrcode.png' %}" alt="QR Code" style="max-width:300px; width:100%; height:auto;"/>
+            </div>
+            <hr>
+            <p><strong>File:</strong> <span id="qr-file-name"></span></p>
+            <p><strong>Price:</strong> ₱<span id="qr-file-price"></span></p>
+            <p><strong>Invoice:</strong> {{ invoice.invoice_number }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openQRModal(fileName, price) {
+    document.getElementById('qr-file-name').textContent = fileName;
+    document.getElementById('qr-file-price').textContent = price;
+    document.getElementById('qrModal').style.display = 'block';
+}
+
+function closeQRModal() {
+    document.getElementById('qrModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(e) {
+    if (e.target === document.getElementById('qrModal')) {
+        closeQRModal();
+    }
+}
+</script>
+{% endblock %}
