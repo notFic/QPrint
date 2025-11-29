@@ -27,31 +27,22 @@
 
   <h1>Welcome, {{ user.get_full_name|default:user.username }}</h1>
 
-  <!-- INVOICE ALERTS -->
-  {% if overdue_invoices %}
-  <div class="alert alert-warning">
-    ⚠️ You have {{ overdue_invoices|length }} overdue invoice(s). Please settle them before submitting new print jobs.
-  </div>
-  {% endif %}
-
-  {% if unpaid_invoices %}
-  <div class="alert alert-info">
-    ℹ️ You have {{ unpaid_invoices|length }} unpaid invoice(s).
-  </div>
-  {% endif %}
-
   <div class="top-grid">
-
-    <!-- HISTORY -->
     <div class="card history-card">
       <div class="history-header">
         <h2>Print-Job History</h2>
         <div class="history-count">
-          {% if print_jobs %}
-            {{ print_jobs|length }} job{{ print_jobs|length|pluralize }}
-          {% endif %}
+          {% if print_jobs %}{{ print_jobs|length }} job{{ print_jobs|length|pluralize }}{% endif %}
         </div>
       </div>
+
+      {% if history_msg %}
+      <div class="history-alert">{{ history_msg }}</div>
+      {% endif %}
+
+      {% if cancel_msg %}
+      <div class="history-alert-red">{{ cancel_msg }}</div>
+      {% endif %}
 
       {% if print_jobs %}
       <div class="history-list">
@@ -60,131 +51,47 @@
           <div class="history-content">
             <div class="history-main">
               <strong>{{ job.file_name }}</strong>
-              <small>
-                {{ job.submitted_at|date:"M d, Y H:i" }}
-                {% if job.invoice_number %} • {{ job.invoice_number }}{% endif %}
-              </small>
+              <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
             </div>
-            <span class="status-badge status-{{ job.status|lower|slugify }}">
-              {{ job.status }}
-            </span>
+            <span class="status-badge status-{{ job.status|lower|slugify }}">{{ job.status }}</span>
           </div>
         </div>
         {% endfor %}
       </div>
       {% else %}
-      <div class="no-history">
-        <p class="muted">No jobs yet.</p>
-      </div>
+      <div class="no-history"><p class="muted">No jobs yet.</p></div>
       {% endif %}
 
-      <!-- INVOICE LIST LINK -->
       {% if print_jobs %}
       <div style="margin-top: 16px; text-align: center;">
-        <a href="{% url 'invoice_list' %}" class="secondary-btn" style="display: inline-block; width: auto; padding: 8px 16px;">
-          View All Invoices
-        </a>
+        <a href="{% url 'invoice_list' %}" class="secondary-btn" style="width: auto; padding: 8px 16px;">View All Invoices</a>
       </div>
       {% endif %}
     </div>
 
-    <!-- INVOICE -->
     <div class="card invoice-card">
       <div class="invoice-header">
         <h2>Printing Invoice</h2>
         <div class="invoice-number">
-          {% if latest_job %}
-            {{ latest_job.invoice_number|default:"#"|add:latest_job.id|stringformat:"06d" }}
-          {% endif %}
+          {% if latest_job %}{{ latest_job.invoice_number|default:"#" }}{% endif %}
         </div>
       </div>
-
       {% if latest_job %}
       <div class="invoice-details">
-        <div class="invoice-row">
-          <span class="label">Document:</span>
-          <span class="value">{{ latest_job.file_name }}</span>
-        </div>
-
-        <div class="invoice-row">
-          <span class="label">Submitted:</span>
-          <span class="value">{{ latest_job.submitted_at|date:"M d, Y H:i" }}</span>
-        </div>
-
-        <div class="invoice-row">
-          <span class="label">Status:</span>
-          <span class="status-badge status-{{ latest_job.status|lower|slugify }}">
-            {{ latest_job.status }}
-          </span>
-        </div>
-
-        {% if latest_job.pages %}
-        <div class="invoice-row">
-          <span class="label">Pages:</span>
-          <span class="value">{{ latest_job.pages }}</span>
-        </div>
-        {% endif %}
-
-        {% if latest_job.paper_size %}
-        <div class="invoice-row">
-          <span class="label">Paper Size:</span>
-          <span class="value">{{ latest_job.paper_size }}</span>
-        </div>
-        {% endif %}
-
-        {% if latest_job.color_option %}
-        <div class="invoice-row">
-          <span class="label">Color:</span>
-          <span class="value">
-            {% if latest_job.color_option == 'bw' %}Black & White{% else %}Color{% endif %}
-          </span>
-        </div>
-        {% endif %}
-
-        {% if latest_job.total_cost %}
-        <div class="invoice-row">
-          <span class="label">Cost:</span>
-          <span class="value">₱{{ latest_job.total_cost }}</span>
-        </div>
-        {% endif %}
-
-        {% if latest_job.due_date %}
-        <div class="invoice-row {% if latest_job.status == 'Overdue' %}overdue-row{% endif %}">
-          <span class="label">Due Date:</span>
-          <span class="value {% if latest_job.status == 'Overdue' %}overdue-text{% endif %}">
-            {{ latest_job.due_date|date:"M d, Y H:i" }}
-            {% if latest_job.status == 'Overdue' %} ⚠️{% endif %}
-          </span>
-        </div>
-        {% endif %}
-
-        {% if latest_job.total_cost %}
-        <div class="invoice-row total-row">
-          <span class="label">Total Cost:</span>
-          <span class="value total-cost">₱{{ latest_job.total_cost }}</span>
-        </div>
-        {% endif %}
+        <div class="invoice-row"><span class="label">Document:</span><span class="value">{{ latest_job.file_name }}</span></div>
+        <div class="invoice-row"><span class="label">Status:</span><span class="status-badge status-{{ latest_job.status|lower|slugify }}">{{ latest_job.status }}</span></div>
+        <div class="invoice-row total-row"><span class="label">Total Cost:</span><span class="value total-cost">₱{{ latest_job.total_cost }}</span></div>
       </div>
-
-      <!-- INVOICE ACTIONS -->
       <div class="invoice-actions">
-        <a href="{% url 'view_invoice' latest_job.id %}" class="secondary-btn" style="display: block; text-align: center; margin-top: 16px;">
-          View Full Invoice
-        </a>
+        <a href="{% url 'view_invoice' latest_job.id %}" class="secondary-btn" style="display: block; text-align: center; margin-top: 16px;">View Full Invoice</a>
       </div>
-
       {% else %}
-      <div class="no-invoice">
-        <p class="muted">No active invoices</p>
-      </div>
+      <div class="no-invoice"><p class="muted">No active invoices</p></div>
       {% endif %}
     </div>
-
   </div>
 
   <div class="content-grid">
-
-    <!-- FILE SUBMISSION -->
     <div class="card submission-card">
       <h2>File Submission</h2>
       <p>Upload your PDF file for printing. Supported file type: PDF only.</p>
@@ -197,11 +104,6 @@
       </div>
       {% endif %}
 
-      {% if overdue_invoices %}
-      <div class="alert alert-error">
-        ❌ Cannot submit new jobs until overdue invoices are settled.
-      </div>
-      {% else %}
       <form method="post" enctype="multipart/form-data" id="upload-form">
         {% csrf_token %}
         <div class="file-upload">
@@ -213,108 +115,119 @@
       {% if file_name %}
       <div class="filename-display">
         <p>Uploaded File:</p>
-        <span>{{ file_name }}</span>
+        <strong>{{ file_name }}</strong><br>
+        {% if submission_msg %}
+        <small style="color: #28a745; font-weight: 600;">{{ submission_msg }}</small>
+        <span style="margin: 0 5px; color: #ccc;">|</span>
+        {% endif %}
         <small>({{ total_pages }} pages detected)</small>
       </div>
       {% endif %}
 
       <form method="post" id="options-form">
         {% csrf_token %}
-        <input type="hidden" name="action" value="calculate">
+        <input type="hidden" name="action" value="submit_job">
+
+        <input type="hidden" name="calculated_total_cost" id="hidden_total_cost">
 
         {% if file_name %}
         <div style="text-align: right; margin-bottom: 12px;">
-          <button type="button" class="secondary-btn clear-btn"
-                  style="font-size:0.85rem; padding:6px 12px;">
-            Clear All
-          </button>
+          <button type="button" class="secondary-btn clear-btn" style="font-size:0.85rem; padding:6px 12px;">Clear All</button>
         </div>
         {% endif %}
 
         <div class="print-options">
           <div class="form-group">
             <label for="pages">Number of Pages</label>
-            <input type="number" id="pages" name="pages" min="1"
-                   value="{{ total_pages|default:'' }}" readonly>
+            <input type="number" id="pages" name="pages" min="1" value="{{ total_pages|default:0 }}" readonly>
+          </div>
+
+          <div class="form-group">
+            <label for="paper_type">Paper Type</label>
+            <select id="paper_type" name="paper_type" required {% if overdue_invoices %}disabled{% endif %}>
+              <option value="" data-price="0">Select type</option>
+              <option value="standard" data-price="0">Standard (No extra charge)</option>
+              <option value="colored" data-price="5">Colored (+₱5.00)</option>
+              <option value="glossy" data-price="10">Glossy (+₱10.00)</option>
+            </select>
           </div>
 
           <div class="form-group">
             <label for="paper_size">Paper Size</label>
             <select id="paper_size" name="paper_size" required {% if overdue_invoices %}disabled{% endif %}>
-              <option value="" {% if not form_data.paper_size %}selected{% endif %}>Select size</option>
-              <option value="A4" {% if form_data.paper_size == 'A4' %}selected{% endif %}>A4</option>
-              <option value="Letter" {% if form_data.paper_size == 'Letter' %}selected{% endif %}>Letter</option>
+              <option value="" data-price="0">Select size</option>
+              <option value="A4" data-price="0">A4 (No extra charge)</option>
+              <option value="Letter" data-price="0">Letter (No extra charge)</option>
+              <option value="Long" data-price="1">Long (+₱1.00)</option>
             </select>
           </div>
 
           <div class="form-group">
             <label for="color_option">Color Option</label>
             <select id="color_option" name="color_option" required {% if overdue_invoices %}disabled{% endif %}>
-              <option value="" {% if not form_data.color_option %}selected{% endif %}>Select option</option>
-              <option value="bw" {% if form_data.color_option == 'bw' %}selected{% endif %}>Black & White</option>
-              <option value="color" {% if form_data.color_option == 'color' %}selected{% endif %}>Color</option>
+              <option value="" data-price="0">Select option</option>
+              <option value="bw" data-price="1">Black & White (+₱1.00)</option>
+              <option value="color" data-price="2">Color (+₱2.00)</option>
             </select>
           </div>
         </div>
 
-        <button type="submit" class="secondary-btn" {% if overdue_invoices %}disabled{% endif %}>Calculate Cost</button>
+        <button type="button" class="secondary-btn" onclick="calculateCostJS()" {% if overdue_invoices %}disabled{% endif %}>Calculate Cost</button>
 
-        {% if total_cost %}
-        <div class="total-cost-display">
-          <h3>Total Cost</h3>
-          <span>₱{{ total_cost }}</span>
+        <div id="cost-result-area" style="display:none; margin-top: 20px;">
+            <div class="breakdown-box" style="display:block; margin-bottom: 15px;">
+                <div class="breakdown-header">Price Breakdown</div>
+                <div class="breakdown-line"><span>Paper Type:</span><span id="calc-paper-type"></span></div>
+                <div class="breakdown-line"><span>Paper Size:</span><span id="calc-paper-size"></span></div>
+                <div class="breakdown-line"><span>Print Type:</span><span id="calc-print-type"></span></div>
+                <div class="breakdown-line"><span>Pages:</span><span id="calc-pages"></span></div>
+                <div class="breakdown-line" style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;">
+                    <strong>Total:</strong><strong style="color: #15803d; font-size: 1.2em;">₱<span id="calc-total"></span></strong>
+                </div>
+            </div>
+
+            <button type="submit" class="primary-btn" {% if overdue_invoices %}disabled{% endif %}>Proceed to Payment</button>
         </div>
 
-        <button type="submit" name="action" value="submit_job" class="primary-btn" {% if overdue_invoices %}disabled{% endif %}>
-          Proceed to Payment
-        </button>
-        {% endif %}
       </form>
-      {% endif %}  <!-- End of overdue_invoices else block -->
     </div>
 
-    <!-- PDF PREVIEW -->
     <div class="card preview-card">
       <h2>Document Preview</h2>
       <div class="preview-box">
         {% if pdf_data %}
-        <iframe class="pdf-iframe"
-                src="data:application/pdf;base64,{{ pdf_data }}"
-                title="PDF Preview"></iframe>
+        <iframe class="pdf-iframe" src="data:application/pdf;base64,{{ pdf_data }}"></iframe>
         {% else %}
-        <div class="preview-placeholder">
-          <p>No file uploaded yet.</p>
-        </div>
+        <div class="preview-placeholder"><p>No file uploaded yet.</p></div>
         {% endif %}
       </div>
     </div>
-
   </div>
 
-  <!-- JOB MODAL -->
   <div id="jobModal" class="modal">
     <div class="modal-content">
-
       <span class="close" onclick="closeModal()">×</span>
-
       <div class="modal-grid">
-
         <div class="modal-details">
           <h3>Order Receipt</h3>
-
           <p><strong>File:</strong> <span id="modal-file"></span></p>
           <p><strong>Pages:</strong> <span id="modal-pages"></span></p>
           <p><strong>Paper:</strong> <span id="modal-paper"></span></p>
           <p><strong>Color:</strong> <span id="modal-color"></span></p>
           <p><strong>Cost:</strong> ₱<span id="modal-cost"></span></p>
+          <p><strong>Status:</strong> <span id="modal-status" class="badge"></span></p>
 
-          <p>
-            <strong>Status:</strong>
-            <span id="modal-status" class="badge"></span>
-          </p>
-
-          <!-- STATUS MESSAGE -->
           <p id="modal-status-message" class="status-message" style="display:none;"></p>
+
+          <button id="breakdownBtn" class="breakdown-toggle">Show Breakdown</button>
+          <div id="breakdownBox" class="breakdown-box">
+            <div class="breakdown-header">Price Breakdown</div>
+            <div class="breakdown-line"><span>Paper Type:</span><span id="bd-paper-type"></span></div>
+            <div class="breakdown-line"><span>Paper Size:</span><span id="bd-paper-size"></span></div>
+            <div class="breakdown-line"><span>Print Type:</span><span id="bd-print-type"></span></div>
+            <div class="breakdown-line"><span>Pages:</span><span id="bd-pages"></span></div>
+            <div class="formula-box"><div><strong>Formula:</strong></div><div id="bd-formula"></div></div>
+          </div>
 
           <form method="post" id="cancelForm">
             {% csrf_token %}
@@ -324,15 +237,11 @@
           </form>
 
           <hr style="margin: 18px 0;">
-
           <h3>Payment</h3>
           <p id="no-proof-text" class="muted" style="display:none;">No payment proof submitted yet.</p>
-
           <p id="payment-proof-link" style="display:none;">
-            <strong>Uploaded Proof:</strong>
-            <a id="proof-url" href="#" target="_blank">View uploaded payment proof</a>
+            <strong>Uploaded Proof:</strong> <a id="proof-url" href="#" target="_blank">View</a>
           </p>
-
           <form method="post" enctype="multipart/form-data" id="paymentForm" style="display:none;">
             {% csrf_token %}
             <input type="hidden" name="action" value="upload_payment_proof_modal">
@@ -340,38 +249,21 @@
             <input type="file" name="payment_proof" accept="image/*" required>
             <button type="submit" class="primary-btn" style="margin-top:12px;">Upload Payment Proof</button>
           </form>
-
-          <!-- QR CODE BUTTON -->
-          <button type="button" class="secondary-btn" style="margin-top:12px;"
-                  onclick="openQRModal(document.getElementById('modal-file').textContent, document.getElementById('modal-cost').textContent)">
-            View QR Code
-          </button>
-
+          <button type="button" class="secondary-btn" style="margin-top:12px;" onclick="openQRModal()">View QR Code</button>
         </div>
-
-        <div class="modal-preview">
-          <iframe id="pdfPreview" width="100%" height="500"></iframe>
-        </div>
-
+        <div class="modal-preview"><iframe id="pdfPreview" width="100%" height="500"></iframe></div>
       </div>
     </div>
   </div>
 
-  <!-- QR CODE MODAL -->
   <div id="qrModal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="closeQRModal()">×</span>
-
-      <div class="qr-modal-body">
+      <div class="qr-modal-body" style="text-align: center;">
         <h3>Scan the QR code</h3>
-        <p>QPrint utilizes GCash for payment. Don't forget to take a picture and upload the proof of payment later!</p>
-
-        <div style="text-align:center; margin: 20px 0;">
-          <img src="{% static 'qprint/images/qrcode.png' %}" alt="QR Code" style="max-width:300px; width:100%; height:auto;"/>
-        </div>
-
+        <p>QPrint utilizes GCash. Please upload proof after payment.</p>
+        <div style="margin: 20px 0;"><img src="{% static 'qprint/images/qrcode.png' %}" style="max-width:300px;"/></div>
         <hr>
-
         <p><strong>File:</strong> <span id="qr-file-name"></span></p>
         <p><strong>Price:</strong> ₱<span id="qr-file-price"></span></p>
       </div>
@@ -380,122 +272,118 @@
 
 </div>
 
-<!-- CLEAR ALL -->
 <script>
   document.querySelector('.clear-btn')?.addEventListener('click', () => {
-    if (confirm('Clear all fields and remove uploaded file?')) {
-      fetch("{% url 'student_dashboard' %}", {
-        method: 'POST',
-        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-        body: new URLSearchParams({ 'action': 'clear' })
-      }).then(() => location.reload());
+    if (confirm('Clear all fields?')) {
+      fetch("{% url 'student_dashboard' %}", { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: new URLSearchParams({ 'action': 'clear' }) }).then(() => location.reload());
     }
   });
-</script>
 
-<script>
+function calculateCostJS() {
+    const pages = parseInt(document.getElementById('pages').value) || 0;
+    if (pages === 0) { alert("Please upload a file first."); return; }
+
+    const pTypeEl = document.getElementById('paper_type');
+    const pSizeEl = document.getElementById('paper_size');
+    const colorEl = document.getElementById('color_option');
+
+    const costPaper = parseFloat(pTypeEl.options[pTypeEl.selectedIndex].dataset.price || 0);
+    const costSize = parseFloat(pSizeEl.options[pSizeEl.selectedIndex].dataset.price || 0);
+    const costColor = parseFloat(colorEl.options[colorEl.selectedIndex].dataset.price || 0);
+
+    if (pTypeEl.value === "" || pSizeEl.value === "" || colorEl.value === "") {
+        alert("Please select all options.");
+        return;
+    }
+
+    const unitPrice = costPaper + costSize + costColor;
+    const total = (unitPrice * pages).toFixed(2);
+
+    document.getElementById('calc-paper-type').textContent = `${pTypeEl.options[pTypeEl.selectedIndex].text}`;
+    document.getElementById('calc-paper-size').textContent = `${pSizeEl.options[pSizeEl.selectedIndex].text}`;
+    document.getElementById('calc-print-type').textContent = `${colorEl.options[colorEl.selectedIndex].text}`;
+    document.getElementById('calc-pages').textContent = `${pages}`;
+    document.getElementById('calc-total').textContent = total;
+
+    // Set hidden input for backend submission
+    document.getElementById('hidden_total_cost').value = total;
+
+    // Show result
+    document.getElementById('cost-result-area').style.display = 'block';
+}
+
 function openModal(jobId) {
   fetch(`/api/job/${jobId}/`)
     .then(r => r.json())
     .then(job => {
-
       document.getElementById('modal-file').textContent = job.file_name;
       document.getElementById('modal-pages').textContent = job.pages;
       document.getElementById('modal-paper').textContent = job.paper_size;
       document.getElementById('modal-color').textContent = job.color_option;
       document.getElementById('modal-cost').textContent = job.total_cost;
 
+      // FILL BREAKDOWN
+      document.getElementById('bd-paper-type').textContent = `${job.paper_type_label || 'Standard'} (₱${job.paper_type_cost || 0})`;
+      document.getElementById('bd-paper-size').textContent = `${job.paper_size_label} (₱${job.paper_size_cost})`;
+      document.getElementById('bd-print-type').textContent = `${job.color_label} (₱${job.color_cost})`;
+      document.getElementById('bd-pages').textContent = `${job.pages} pages`;
+      document.getElementById('bd-formula').textContent = `${job.paper_type_cost} + ${job.paper_size_cost} + ${job.color_cost} + (${job.color_cost} × ${job.pages})`;
+
       // STATUS BADGE
       const statusEl = document.getElementById('modal-status');
-      const cleanStatus = job.status.toLowerCase().replace(/\s+/g, '-');
       statusEl.textContent = job.status;
-      statusEl.className = `badge badge-${cleanStatus}`;
+      statusEl.className = `badge badge-${job.status.toLowerCase().replace(/\s+/g, '-')}`;
 
       // STATUS MESSAGE
       const msg = document.getElementById('modal-status-message');
       msg.style.display = "block";
+      if (job.status === "Unpaid") msg.textContent = "Please settle your dues.";
+      else if (job.status === "Pending") msg.textContent = "Your job is queued.";
+      else if (job.status === "Ready") msg.textContent = "Ready for pickup!";
+      else msg.style.display = "none";
 
-      if (job.status === "Unpaid") {
-        msg.textContent = "Your print job must be paid before it gets printed, please settle your dues.";
-      }
-      else if (job.status === "Pending") {
-        msg.textContent = "Your print job is being queued, please wait patiently.";
-      }
-      else if (job.status === "Ready") {
-        msg.textContent = "Your print is ready to be picked up! Please head to the CIT-U cafeteria.";
-      }
-      else if (job.status === "Completed") {
-        msg.textContent = "This print job has been successfully completed.";
-      }
-      else if (job.status === "Cancelled") {
-        msg.textContent = "This print job was cancelled.";
-      }
-
-      // PDF PREVIEW
       document.getElementById('pdfPreview').src = job.file_url;
 
-      // CANCEL BUTTON
+      // CANCEL BUTTON LOGIC
       const cancelBtn = document.getElementById('cancelBtn');
-      const cancelJobIdInput = document.getElementById('cancel-job-id');
-
-        if (job.status.toLowerCase() === "unpaid") {
-            cancelBtn.style.display = "block";
-            cancelBtn.disabled = false;
-            cancelBtn.style.opacity = 1;
-            cancelBtn.style.cursor = "pointer";
-            cancelJobIdInput.value = job.id;
-        } else if (job.status.toLowerCase() === "pending" || job.status.toLowerCase() === "ready") {
-            cancelBtn.style.display = "none";
-        } else {
-            cancelBtn.style.display = "none"; // for completed, cancelled, or any other status
-        }
+      document.getElementById('cancel-job-id').value = job.id;
+      cancelBtn.style.display = (job.status === "Unpaid" || job.status === "Pending") ? "block" : "none";
 
       // PAYMENT LOGIC
       const paymentForm = document.getElementById('paymentForm');
       const proofLink = document.getElementById('payment-proof-link');
       const noProof = document.getElementById('no-proof-text');
       const proofUrl = document.getElementById('proof-url');
-
       document.getElementById('payment-job-id').value = job.id;
 
       if (job.payment_proof_url) {
-        proofLink.style.display = "block";
-        noProof.style.display = "none";
-        paymentForm.style.display = "none";
+        proofLink.style.display = "block"; noProof.style.display = "none"; paymentForm.style.display = "none";
         proofUrl.href = job.payment_proof_url;
       } else {
-        noProof.style.display = "block";
-        paymentForm.style.display = "block";
-        proofLink.style.display = "none";
+        noProof.style.display = "block"; paymentForm.style.display = "block"; proofLink.style.display = "none";
       }
 
       document.getElementById('jobModal').style.display = "block";
-    })
-    .catch(err => {
-      console.error("Modal error:", err);
-      alert("Could not load job details.");
     });
 }
 
-function closeModal() {
-  document.getElementById('jobModal').style.display = 'none';
-}
-
-function openQRModal(fileName, price) {
-  document.getElementById('qr-file-name').textContent = fileName;
-  document.getElementById('qr-file-price').textContent = price;
+function openQRModal() {
+  document.getElementById('qr-file-name').textContent = document.getElementById('modal-file').textContent;
+  document.getElementById('qr-file-price').textContent = document.getElementById('modal-cost').textContent;
   document.getElementById('qrModal').style.display = 'block';
 }
 
-function closeQRModal() {
-  document.getElementById('qrModal').style.display = 'none';
-}
+function closeModal() { document.getElementById('jobModal').style.display = 'none'; }
+function closeQRModal() { document.getElementById('qrModal').style.display = 'none'; }
+window.onclick = e => { if (e.target === document.getElementById('jobModal')) closeModal(); if (e.target === document.getElementById('qrModal')) closeQRModal(); };
 
-// Close modals when clicking outside
-window.onclick = e => {
-  if (e.target === document.getElementById('jobModal')) closeModal();
-  if (e.target === document.getElementById('qrModal')) closeQRModal();
-};
+// BREAKDOWN TOGGLE
+document.getElementById('breakdownBtn').addEventListener('click', () => {
+  const box = document.getElementById('breakdownBox');
+  const btn = document.getElementById('breakdownBtn');
+  const visible = box.style.display === 'block';
+  box.style.display = visible ? 'none' : 'block';
+  btn.textContent = visible ? 'Show Breakdown' : 'Hide Breakdown';
+});
 </script>
-
 {% endblock %}
