@@ -1,24 +1,76 @@
-<h2>Revenue Dashboard</h2>
-<p>Total Revenue: ${{ total_revenue }}</p>
-<p>Total Jobs Completed: {{ total_jobs }}</p>
+{% extends "dashboard_base.html" %}
+{% load static %}
 
-<h3>Revenue by Color Option</h3>
-<ul>
-  {% for color, rev in revenue_by_color.items %}
-    <li>{{ color }}: ${{ rev|floatformat:2 }}</li>
-  {% endfor %}
-</ul>
+{% block title %}Revenue Dashboard{% endblock %}
 
-<h3>Revenue by Paper Size</h3>
-<ul>
-  {% for paper, rev in revenue_by_paper.items %}
-    <li>{{ paper }}: ${{ rev|floatformat:2 }}</li>
-  {% endfor %}
-</ul>
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/revenue_dashboard.css' %}">
+{% endblock %}
 
-<h3>Revenue by Day</h3>
-<ul>
-  {% for day, rev in revenue_by_day.items %}
-    <li>{{ day }}: ${{ rev|floatformat:2 }}</li>
-  {% endfor %}
-</ul>
+{% block sidebar_links %}
+<a href="{% url 'staff_dashboard' %}">Print Job Queue</a>
+<a href="{% url 'revenue_dashboard' %}" class="active">Revenue Reports</a>
+<a href="#settings">Settings</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="container">
+
+    <h1>Revenue Dashboard</h1>
+
+    <div class="card">
+        <h2>Summary</h2>
+
+        <p><strong>Total Revenue:</strong> <span class="amount">{{ total_revenue }}</span></p>
+        <p><strong>Total Jobs Completed:</strong> <span class="amount">{{ total_jobs }}</span></p>
+    </div>
+
+
+    <div class="card" style="margin-top: 24px;">
+        <h2>Revenue Breakdown</h2>
+
+        <div style="text-align:center;">
+            <div class="tabs">
+                <button class="tablink active" onclick="openTab(event, 'today')">Today</button>
+                <button class="tablink" onclick="openTab(event, 'week')">This Week</button>
+                <button class="tablink" onclick="openTab(event, 'month')">This Month</button>
+            </div>
+        </div>
+
+        <div id="today" class="tabcontent" style="display:block;">
+            <h3>Today's Revenue</h3>
+            <p class="amount">{{ revenue_today }}</p>
+        </div>
+
+        <div id="week" class="tabcontent">
+            <h3>This Week's Revenue</h3>
+            <p class="amount">{{ revenue_week }}</p>
+        </div>
+
+        <div id="month" class="tabcontent">
+            <h3>This Month's Revenue</h3>
+            <p class="amount">{{ revenue_month }}</p>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function openTab(evt, tabName) {
+  var tabcontents = document.getElementsByClassName("tabcontent");
+  for (var i = 0; i < tabcontents.length; i++) {
+    tabcontents[i].style.display = "none";
+  }
+
+  var tablinks = document.getElementsByClassName("tablink");
+  for (var i = 0; i < tablinks.length; i++) {
+    tablinks[i].classList.remove("active");
+  }
+
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.classList.add("active");
+}
+</script>
+
+{% endblock %}
