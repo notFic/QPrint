@@ -36,7 +36,6 @@ supabase = settings.SUPABASE_CLIENT
 bucket = settings.SUPABASE_BUCKET
 
 
-# Invoice System Functions
 def generate_invoice_number():
     """Generate unique invoice number: INV-YYYYMMDD-XXXXX"""
     date_part = datetime.now().strftime("%Y%m%d")
@@ -370,7 +369,6 @@ def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
 
-    # Update overdue invoices
     update_overdue_invoices()
 
     jobs_resp = supabase.table('print_jobs') \
@@ -409,7 +407,6 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         'total_cost': None,
     }
 
-    # Fetch jobs from Supabase
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
@@ -417,7 +414,6 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         .execute()
     jobs = jobs_resp.data or []
 
-    # Calculate invoice statistics
     unpaid_invoices = [job for job in jobs if not job.get('is_paid') and job.get('status') != 'Cancelled']
     overdue_invoices = [job for job in jobs if job.get('status') == 'Overdue']
 
@@ -455,20 +451,17 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             messages.success(request, "File preview ready.")
             return redirect('student_dashboard')
 
-        # CLEAR
         if action == 'clear':
             for k in ['pdf_data', 'file_name', 'total_pages']:
                 request.session.pop(k, None)
             return redirect('student_dashboard')
 
-        # PRESERVE FORM
         context['form_data'] = {
             'pages': request.session.get('total_pages'),
             'paper_size': request.POST.get('paper_size'),
             'color_option': request.POST.get('color_option'),
         }
 
-        # CALCULATE COST
         if action == 'calculate':
             pages = context['form_data']['pages']
             paper = context['form_data']['paper_size']
@@ -482,13 +475,11 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 request.session['total_cost'] = total
                 context['total_cost'] = f"{total:.2f}"
 
-        # SUBMIT JOB WITH INVOICE
         if action == 'submit_job':
             if not request.session.get('pdf_data'):
                 messages.error(request, "Upload a file first.")
                 return redirect('student_dashboard')
 
-            # Check if user has overdue invoices
             if context['overdue_invoices']:
                 messages.error(request, "You have overdue invoices. Please settle them before submitting new jobs.")
                 return redirect('student_dashboard')
@@ -506,11 +497,9 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             )
             file_url = supabase.storage.from_(bucket).get_public_url(path)
 
-            # Generate invoice data
             invoice_number = generate_invoice_number()
             due_date = datetime.now() + timedelta(hours=24)
 
-            # Save record with invoice information
             job_data = {
                 'user_id': request.user.id,
                 'username': request.user.username,
@@ -532,14 +521,12 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
             supabase.table('print_jobs').insert(job_data).execute()
 
-            # Clear session
             for k in ['pdf_data', 'file_name', 'total_pages', 'total_cost']:
                 request.session.pop(k, None)
 
             messages.success(request, f"Job submitted! Invoice #{invoice_number} created. Please pay within 24 hours.")
             return redirect('student_dashboard')
 
-        # CANCEL JOB
         if action == 'cancel_job':
             job_id = request.POST.get('job_id')
             job_resp = supabase.table('print_jobs') \
@@ -550,11 +537,10 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             job = job_resp.data[0] if job_resp.data else None
 
             if job and job['status'] in ['Unpaid', 'Pending Review']:
-                # Remove file from storage
+
                 path = '/'.join(job['file_url'].split('/')[-2:])
                 supabase.storage.from_(bucket).remove([path])
 
-                # Update status to cancelled
                 supabase.table('print_jobs') \
                     .update({'status': 'Cancelled'}) \
                     .eq('id', job_id) \
@@ -565,7 +551,6 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 messages.error(request, "Cannot cancel job in its current status.")
             return redirect('student_dashboard')
 
-        # UPLOAD PAYMENT PROOF
         if action == 'upload_payment_proof_modal':
             job_id = request.POST.get('job_id')
 
@@ -605,8 +590,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
     return render(request, 'subtemplates/student_dashboard.html', context)
 
 
-# INVOICE MANAGEMENT VIEWS
-@login_required
+@login_required(login_url='login')
 def view_invoice(request, job_id):
     """Display detailed invoice"""
     job_resp = supabase.table('print_jobs') \
@@ -621,7 +605,6 @@ def view_invoice(request, job_id):
 
     job = job_resp.data[0]
 
-    # Check print eligibility
     can_print, print_message = check_print_eligibility(job)
 
     context = {
@@ -634,7 +617,7 @@ def view_invoice(request, job_id):
     return render(request, 'subtemplates/invoice_detail.html', context)
 
 
-@login_required
+@login_required(login_url='login')
 def invoice_list(request):
     """List all user invoices"""
     invoices_resp = supabase.table('print_jobs') \
@@ -645,7 +628,6 @@ def invoice_list(request):
 
     invoices = invoices_resp.data or []
 
-    # Calculate statistics - ADD REJECTED COUNT
     stats = {
         'total': len(invoices),
         'paid': len([inv for inv in invoices if inv.get('is_paid')]),
@@ -661,7 +643,6 @@ def invoice_list(request):
     return render(request, 'subtemplates/invoice_list.html', context)
 
 
-# For the modals
 def get_job_detail(request, job_id):
     resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
     if resp.data:
@@ -669,7 +650,7 @@ def get_job_detail(request, job_id):
     return JsonResponse({'error': 'Not found'}, status=404)
 
 
-@login_required
+@login_required(login_url='login')
 def staff_update_payment(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
@@ -689,12 +670,11 @@ def staff_update_payment(request):
         return redirect("staff_dashboard")
 
 
-@login_required
+@login_required(login_url='login')
 def staff_confirm_job(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
 
-        # Only allow if payment is accepted
         job_resp = supabase.table("print_jobs") \
             .select("payment_status, is_paid") \
             .eq("id", job_id) \
@@ -718,8 +698,7 @@ def staff_confirm_job(request):
         return redirect("staff_dashboard")
 
 
-# PRINT RESTRICTION CHECK
-@login_required
+@login_required(login_url='login')
 def check_print_status(request, job_id):
     """API endpoint to check if a job can be printed"""
     job_resp = supabase.table('print_jobs') \
