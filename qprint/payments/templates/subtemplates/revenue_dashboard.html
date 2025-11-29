@@ -1,0 +1,24 @@
+<h2>Revenue Dashboard</h2>
+<p>Total Revenue: ${{ total_revenue }}</p>
+<p>Total Jobs Completed: {{ total_jobs }}</p>
+
+<h3>Revenue by Color Option</h3>
+<ul>
+  {% for color, rev in revenue_by_color.items %}
+    <li>{{ color }}: ${{ rev|floatformat:2 }}</li>
+  {% endfor %}
+</ul>
+
+<h3>Revenue by Paper Size</h3>
+<ul>
+  {% for paper, rev in revenue_by_paper.items %}
+    <li>{{ paper }}: ${{ rev|floatformat:2 }}</li>
+  {% endfor %}
+</ul>
+
+<h3>Revenue by Day</h3>
+<ul>
+  {% for day, rev in revenue_by_day.items %}
+    <li>{{ day }}: ${{ rev|floatformat:2 }}</li>
+  {% endfor %}
+</ul>
