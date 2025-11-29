@@ -1,0 +1,22 @@
+.tabs {
+  margin-bottom: 10px;
+}
+
+.tablink {
+  background-color: #f1f1f1;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  display: inline-block;
+  margin-right: 2px;
+}
+
+.tablink.active {
+  background-color: #ddd;
+  font-weight: bold;
+}
+
+.tabcontent {
+  border: 1px solid #ddd;
+  padding: 10px;
+}
