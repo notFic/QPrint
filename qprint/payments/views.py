@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -8,7 +8,7 @@ from django.conf import settings
 supabase = settings.SUPABASE_CLIENT
 bucket = settings.SUPABASE_BUCKET
 
-@login_required
+@login_required(login_url='login')
 def revenue_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
@@ -23,34 +23,37 @@ def revenue_dashboard(request):
     total_revenue = sum(float(job.get('total_cost', 0)) for job in jobs)
     total_jobs = len(jobs)
 
-    revenue_by_color = {}
-    for job in jobs:
-        color = job.get('color_option', 'Unknown')
-        revenue_by_color[color] = revenue_by_color.get(color, 0) + float(job.get('total_cost', 0))
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    revenue_today = sum(
+        float(job.get('total_cost', 0))
+        for job in jobs
+        if job.get('submitted_at', '').startswith(today_str)
+    )
 
-    revenue_by_paper = {}
-    for job in jobs:
-        paper = job.get('paper_size', 'Unknown')
-        revenue_by_paper[paper] = revenue_by_paper.get(paper, 0) + float(job.get('total_cost', 0))
+    today = datetime.now()
+    start_of_week = today - timedelta(days=today.weekday())
+    revenue_week = sum(
+        float(job.get('total_cost', 0))
+        for job in jobs
+        if job.get('submitted_at') and datetime.fromisoformat(job['submitted_at'].split('T')[0]) >= start_of_week
+    )
 
-    revenue_by_day = {}
-    for job in jobs:
-        submitted = job.get('submitted_at')
-        if submitted:
-            try:
-                date_obj = datetime.fromisoformat(submitted.split('T')[0])
-                day_str = date_obj.strftime('%Y-%m-%d')
-            except Exception:
-                day_str = submitted
-            revenue_by_day[day_str] = revenue_by_day.get(day_str, 0) + float(job.get('total_cost', 0))
+    start_of_month = today.replace(day=1)
+    revenue_month = sum(
+        float(job.get('total_cost', 0))
+        for job in jobs
+        if job.get('submitted_at') and datetime.fromisoformat(job['submitted_at'].split('T')[0]) >= start_of_month
+    )
+
+    def format_revenue(value):
+        return f"${value:.2f}" if value > 0 else "No Revenue Recorded"
 
     context = {
-        'total_revenue': f"{total_revenue:.2f}",
+        'total_revenue': format_revenue(total_revenue),
         'total_jobs': total_jobs,
-        'revenue_by_color': revenue_by_color,
-        'revenue_by_paper': revenue_by_paper,
-        'revenue_by_day': revenue_by_day,
-        'jobs': jobs,
+        'revenue_today': format_revenue(revenue_today),
+        'revenue_week': format_revenue(revenue_week),
+        'revenue_month': format_revenue(revenue_month),
     }
 
     return render(request, 'subtemplates/revenue_dashboard.html', context)
