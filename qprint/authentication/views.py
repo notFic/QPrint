@@ -7,6 +7,7 @@ import uuid
 import base64
 import PyPDF2
 from io import BytesIO
+import pytz
 
 from django.http import JsonResponse, HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
@@ -564,7 +565,11 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             file_url = supabase.storage.from_(bucket).get_public_url(path)
 
             invoice_number = generate_invoice_number()
-            due_date = datetime.now() + timedelta(hours=24)
+
+            ph_tz = pytz.timezone('Asia/Manila')
+            now_ph = datetime.now(ph_tz)
+
+            due_date = now_ph + timedelta(hours=24)
 
             job_data = {
                 'user_id': request.user.id,
@@ -579,10 +584,10 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 'status': 'Unpaid',
                 'payment_status': 'Unpaid',
                 'invoice_number': invoice_number,
-                'invoice_date': 'now()',
+                'invoice_date': now_ph.isoformat(),
                 'due_date': due_date.isoformat(),
+                'submitted_at': now_ph.isoformat(),
                 'is_paid': False,
-                'submitted_at': 'now()'
             }
             supabase.table('print_jobs').insert(job_data).execute()
 
@@ -621,8 +626,8 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
                 supabase.table("print_jobs").update({
                     "payment_proof_url": proof_url,
-                    "payment_status": "Pending Review",
-                    "status": "Pending Review",
+                    "payment_status": "Verifying",
+                    "status": "Verifying",
                 }).eq("id", job_id).execute()
             return redirect("student_dashboard")
 
@@ -729,8 +734,8 @@ def staff_update_payment(request):
         if action == "accept":
             new_payment_status = "Accepted"
             is_paid = True
-            # FIX: Change job status from "Ready" to "Pending" upon acceptance.
-            job_status = "Pending"
+            # CHANGED: "Pending" -> "On Queue"
+            job_status = "On Queue"
 
             # Rejection logic
         elif action == "reject":
@@ -749,7 +754,6 @@ def staff_update_payment(request):
         }).eq("id", job_id).execute()
 
         return redirect("staff_dashboard")
-
 
 @login_required
 def staff_confirm_job(request):
@@ -772,9 +776,8 @@ def staff_confirm_job(request):
             messages.error(request, "Cannot confirm. Payment has not been accepted.")
             return redirect("staff_dashboard")
 
-        # NEW CHECK: Only allow status change from "Pending"
-        if job["status"] not in ["Pending"]:
-            messages.error(request, "Job must be 'Pending' before marking as Ready.")
+        if job["status"] not in ["Pending", "On Queue"]:
+            messages.error(request, "Job must be 'On Queue' before marking as Ready.")
             return redirect("staff_dashboard")
 
         # New status is "Ready"
@@ -850,7 +853,7 @@ def check_print_eligibility(job):
     """Check if job can be printed"""
     if job.get('is_paid') == False:
         return False, "Invoice unpaid - please complete payment first"
-    elif job.get('status') == 'Pending Review':
+    elif job.get('status') == 'Verifying':
         return False, "Payment pending review"
     elif job.get('status') == 'Cancelled':
         return False, "Job was cancelled"

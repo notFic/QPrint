@@ -355,46 +355,73 @@ function openModal(jobId) {
       document.getElementById('bd-pages').textContent = `${job.pages} pages`;
       document.getElementById('bd-formula').textContent = `${job.paper_type_cost} + ${job.paper_size_cost} + ${job.color_cost} + (${job.color_cost} × ${job.pages})`;
 
-      // 3. Status Badge & Message
+      // 3. Status Badge
       const status = job.status;
+      const paymentStatus = job.payment_status; // Get payment status explicitly
       const statusEl = document.getElementById('modal-status');
       statusEl.textContent = status;
+      // Slugify to match CSS (On Queue -> badge-on-queue)
       statusEl.className = `badge badge-${status.toLowerCase().replace(/\s+/g, '-')}`;
 
+      // 4. Status Message Logic (Handles REJECTED status)
       const msg = document.getElementById('modal-status-message');
+      msg.className = "status-message"; // Reset classes
       msg.style.display = "block";
-      if (status === "Unpaid") msg.textContent = "Please settle your dues.";
-      else if (status === "Pending") msg.textContent = "Your job is queued.";
-      else if (status === "Ready") msg.textContent = "Ready for pickup!";
-      else if (status === "Cancelled") msg.textContent = "This job has been cancelled.";
-      else msg.style.display = "none";
+
+      if (paymentStatus === "Rejected") {
+          msg.textContent = "Your previous payment proof was rejected. Please upload a valid one.";
+          msg.classList.add("rejected"); // Adds red styling
+      } else if (status === "Unpaid") {
+          msg.textContent = "Please settle your dues.";
+      } else if (status === "Verifying" || status === "Pending Review" || status === "On Queue") {
+          msg.textContent = "Payment is being verified / queued.";
+      } else if (status === "Ready") {
+          msg.textContent = "Ready for pickup!";
+      } else if (status === "Cancelled") {
+          msg.textContent = "This job has been cancelled.";
+      } else {
+          msg.style.display = "none";
+      }
 
       document.getElementById('pdfPreview').src = job.file_url;
 
-      // 4. CANCEL BUTTON LOGIC (triggers confirmation modal)
+      // 5. Cancel Button Logic
       const cancelBtn = document.getElementById('cancelBtn');
       cancelBtn.onclick = function() { triggerConfirmation('cancel', job.id, job.file_name); };
-      cancelBtn.style.display = (status === "Unpaid" || status === "Pending") ? "block" : "none";
 
-      // 5. Payment Logic (DISABLE IF CANCELLED)
+      const isVerifying = (status === "Verifying" || status === "Pending Review");
+      const isUnpaid = (status === "Unpaid");
+      cancelBtn.style.display = (isUnpaid || isVerifying) ? "block" : "none";
+
+      // 6. Payment Logic (Re-enable upload if rejected)
       const paymentContainer = document.getElementById('payment-section-container');
+      const paymentForm = document.getElementById('paymentForm');
+      const proofLink = document.getElementById('payment-proof-link');
+      const noProof = document.getElementById('no-proof-text');
+      const proofUrl = document.getElementById('proof-url');
+      document.getElementById('payment-job-id').value = job.id;
 
       if (status === 'Cancelled') {
           paymentContainer.classList.add('disabled-section');
       } else {
           paymentContainer.classList.remove('disabled-section');
 
-          const paymentForm = document.getElementById('paymentForm');
-          const proofLink = document.getElementById('payment-proof-link');
-          const noProof = document.getElementById('no-proof-text');
-          const proofUrl = document.getElementById('proof-url');
-          document.getElementById('payment-job-id').value = job.id;
-
-          if (job.payment_proof_url) {
-            proofLink.style.display = "block"; noProof.style.display = "none"; paymentForm.style.display = "none";
-            proofUrl.href = job.payment_proof_url;
+          if (paymentStatus === "Rejected") {
+              // Case A: Rejected -> SHOW FORM again, HIDE old proof link
+              paymentForm.style.display = "block";
+              noProof.style.display = "none";
+              proofLink.style.display = "none";
+          } else if (job.payment_proof_url) {
+              // Case B: Has proof & NOT rejected -> Show Link, Hide Form
+              proofLink.style.display = "block";
+              noProof.style.display = "none";
+              paymentForm.style.display = "none";
+              proofUrl.href = job.payment_proof_url;
           } else {
-            noProof.style.display = "block"; paymentForm.style.display = "block"; proofLink.style.display = "none";
+              // Case C: No proof yet -> Show Form
+              noProof.style.display = "block";
+              paymentForm.style.display = "block";
+              proofLink.style.display = "none";
           }
       }
 
