@@ -60,8 +60,8 @@
           <div class="history-content">
             <div class="history-main">
               <strong>{{ job.file_name }}</strong>
-              <small>
-                {{ job.submitted_at|date:"M d, Y H:i" }}
+              <small class="job-date" data-date="{{ job.submitted_at }}">
+                {{ job.submitted_at|slice:":10" }} {{ job.submitted_at|slice:"11:16" }}
                 {% if job.invoice_number %} • {{ job.invoice_number }}{% endif %}
               </small>
             </div>
@@ -108,7 +108,7 @@
 
         <div class="invoice-row">
           <span class="label">Submitted:</span>
-          <span class="value">{{ latest_job.submitted_at|date:"M d, Y H:i" }}</span>
+          <span class="value">{{ latest_job.submitted_at|slice:":10" }} {{ latest_job.submitted_at|slice:"11:16" }}</span>
         </div>
 
         <div class="invoice-row">
@@ -148,11 +148,24 @@
         </div>
         {% endif %}
 
+        <!-- INVOICE DATE -->
+        <div class="invoice-row">
+          <span class="label">Invoice Date:</span>
+          <span class="value" id="invoice-date-raw">
+            {% if latest_job.invoice_date %}
+              {{ latest_job.invoice_date }}
+            {% else %}
+              -
+            {% endif %}
+          </span>
+        </div>
+
+        <!-- DUE DATE -->
         {% if latest_job.due_date %}
         <div class="invoice-row {% if latest_job.status == 'Overdue' %}overdue-row{% endif %}">
           <span class="label">Due Date:</span>
-          <span class="value {% if latest_job.status == 'Overdue' %}overdue-text{% endif %}">
-            {{ latest_job.due_date|date:"M d, Y H:i" }}
+          <span class="value {% if latest_job.status == 'Overdue' %}overdue-text{% endif %}" id="due-date-raw">
+            {{ latest_job.due_date }}
             {% if latest_job.status == 'Overdue' %} ⚠️{% endif %}
           </span>
         </div>
@@ -496,6 +509,43 @@ window.onclick = e => {
   if (e.target === document.getElementById('jobModal')) closeModal();
   if (e.target === document.getElementById('qrModal')) closeQRModal();
 };
+
+// DATE FORMATTING FUNCTION - UPDATED
+document.addEventListener('DOMContentLoaded', function() {
+    // Simple string manipulation approach - guaranteed to work
+    function formatDateSimple(dateString) {
+        if (!dateString || dateString === '-') return '-';
+
+        try {
+            // Expected format: 2025-11-30T23:06:48.640762+00:00
+            const datePart = dateString.split('T')[0]; // 2025-11-30
+            const timePart = dateString.split('T')[1]; // 23:06:48.640762+00:00
+            const time = timePart ? timePart.substring(0, 5) : ''; // 23:06
+
+            if (datePart) {
+                const [year, month, day] = datePart.split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthName = monthNames[parseInt(month) - 1];
+                return `${monthName} ${day}, ${year} ${time}`;
+            }
+            return dateString;
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    // Format the dates in the invoice card
+    const invoiceDateEl = document.getElementById('invoice-date-raw');
+    const dueDateEl = document.getElementById('due-date-raw');
+
+    if (invoiceDateEl) {
+        invoiceDateEl.textContent = formatDateSimple(invoiceDateEl.textContent);
+    }
+    if (dueDateEl) {
+        dueDateEl.textContent = formatDateSimple(dueDateEl.textContent);
+    }
+});
 </script>
 
 {% endblock %}

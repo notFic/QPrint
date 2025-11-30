@@ -11,9 +11,9 @@
 {% block main_content %}
 <div class="container">
     <a href="{% url 'student_dashboard' %}" class="back-btn">← Back to Dashboard</a>
-    
+
     <h1>My Invoices</h1>
-    
+
     <!-- Statistics -->
     <div class="invoice-stats">
         <div class="stat-card">
@@ -32,7 +32,6 @@
             <div class="stat-number stat-overdue">{{ stats.overdue }}</div>
             <div class="stat-label">Overdue</div>
         </div>
-        <!-- NEW: Rejected Invoices Stat Card -->
         <div class="stat-card">
             <div class="stat-number stat-rejected">{{ stats.rejected }}</div>
             <div class="stat-label">Rejected</div>
@@ -64,7 +63,13 @@
                         <strong>{{ invoice.file_name }}</strong><br>
                         <small>{{ invoice.pages }} pages • {{ invoice.paper_size }}</small>
                     </td>
-                    <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                    <td class="invoice-date-raw" data-date="{{ invoice.invoice_date }}">
+                        {% if invoice.invoice_date %}
+                            {{ invoice.invoice_date|slice:":10" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>₱{{ invoice.total_cost }}</td>
                     <td>
                         <span class="status-badge status-{{ invoice.status|lower|slugify }}">
@@ -76,9 +81,9 @@
                             {{ invoice.payment_status }}
                         </span>
                     </td>
-                    <td>
+                    <td class="due-date-raw" data-date="{{ invoice.due_date }}">
                         {% if invoice.due_date %}
-                            {{ invoice.due_date|date:"M d, Y" }}
+                            {{ invoice.due_date|slice:":10" }}
                             {% if invoice.status == 'Overdue' %} ⚠️{% endif %}
                         {% else %}
                             -
@@ -104,4 +109,60 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Invoice list date formatting started...');
+
+    // Simple string manipulation approach
+    function formatDateSimple(dateString) {
+        if (!dateString || dateString === '-') return '-';
+        console.log('Formatting date:', dateString);
+
+        try {
+            const datePart = dateString.split('T')[0];
+
+            if (datePart) {
+                const [year, month, day] = datePart.split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthName = monthNames[parseInt(month) - 1];
+                const formatted = `${monthName} ${day}, ${year}`;
+                console.log('Formatted to:', formatted);
+                return formatted;
+            }
+            return dateString;
+        } catch (e) {
+            console.log('Error formatting date:', e);
+            return dateString;
+        }
+    }
+
+    // Format all invoice dates in the table
+    const invoiceDateElements = document.querySelectorAll('.invoice-date-raw');
+    console.log('Found invoice date elements:', invoiceDateElements.length);
+
+    invoiceDateElements.forEach(el => {
+        const rawDate = el.getAttribute('data-date');
+        console.log('Raw date from data attribute:', rawDate);
+        if (rawDate && rawDate !== '-') {
+            el.textContent = formatDateSimple(rawDate);
+        }
+    });
+
+    // Format all due dates in the table
+    const dueDateElements = document.querySelectorAll('.due-date-raw');
+    console.log('Found due date elements:', dueDateElements.length);
+
+    dueDateElements.forEach(el => {
+        const rawDate = el.getAttribute('data-date');
+        console.log('Raw due date from data attribute:', rawDate);
+        if (rawDate && rawDate !== '-') {
+            el.textContent = formatDateSimple(rawDate);
+        }
+    });
+
+    console.log('Date formatting completed');
+});
+</script>
 {% endblock %}

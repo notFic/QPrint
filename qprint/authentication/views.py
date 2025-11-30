@@ -72,6 +72,30 @@ def update_overdue_invoices(user_id=None):
     query.execute()
 
 
+def get_unpaid_invoices(jobs):
+    """Get truly unpaid invoices (excluding pending review, cancelled, completed, ready)"""
+    unpaid = []
+    for job in jobs:
+        # Skip cancelled jobs
+        if job.get('status') == 'Cancelled':
+            continue
+
+        # Skip jobs that are paid or payment is accepted
+        if job.get('is_paid') or job.get('payment_status') in ['Accepted', 'Paid']:
+            continue
+
+        # Skip completed and ready jobs
+        if job.get('status') in ['Completed', 'Ready']:
+            continue
+
+        # Skip jobs pending review (payment proof uploaded)
+        if job.get('status') == 'Pending Review':
+            continue
+
+        unpaid.append(job)
+    return unpaid
+
+
 def send_password_reset_email(request, email):
     try:
         user = User.objects.get(email=email)
@@ -417,8 +441,8 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         .execute()
     jobs = jobs_resp.data or []
 
-    # Calculate invoice statistics
-    unpaid_invoices = [job for job in jobs if not job.get('is_paid') and job.get('status') != 'Cancelled']
+    # Calculate invoice statistics using the improved logic
+    unpaid_invoices = get_unpaid_invoices(jobs)
     overdue_invoices = [job for job in jobs if job.get('status') == 'Overdue']
 
     context.update({
@@ -524,7 +548,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 'payment_status': 'Unpaid',
                 'payment_proof_url': None,
                 'invoice_number': invoice_number,
-                'invoice_date': 'now()',
+                'invoice_date': datetime.now().isoformat(),
                 'due_date': due_date.isoformat(),
                 'is_paid': False,
                 'submitted_at': 'now()'
@@ -645,13 +669,13 @@ def invoice_list(request):
 
     invoices = invoices_resp.data or []
 
-    # Calculate statistics - ADD REJECTED COUNT
+    # Calculate statistics using improved logic
     stats = {
         'total': len(invoices),
         'paid': len([inv for inv in invoices if inv.get('is_paid')]),
-        'unpaid': len([inv for inv in invoices if not inv.get('is_paid') and inv.get('status') != 'Cancelled']),
+        'unpaid': len(get_unpaid_invoices(invoices)),  # Use the helper function
         'overdue': len([inv for inv in invoices if inv.get('status') == 'Overdue']),
-        'rejected': len([inv for inv in invoices if inv.get('payment_status') == 'Rejected']),  # NEW
+        'rejected': len([inv for inv in invoices if inv.get('payment_status') == 'Rejected']),
     }
 
     context = {
