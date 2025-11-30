@@ -1,5 +1,5 @@
 /* =========================================================
-   STAFF DASHBOARD STYLES (FULL VERSION)
+   STAFF DASHBOARD STYLES (FIXED DELETE VISIBILITY)
    ========================================================= */
 
 /* --- ROOT VARIABLES --- */
@@ -45,7 +45,7 @@
 /* --- HEADER & SORT CONTROLS --- */
 .queue-header-row {
     display: flex;
-    align-items: center; /* Vertically center everything */
+    align-items: center;
     margin-bottom: 12px;
     padding-bottom: 12px;
     border-bottom: 1px solid #e5e7eb;
@@ -55,7 +55,7 @@
     display: flex;
     align-items: center;
     gap: 15px;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
     width: 100%;
 }
 
@@ -72,7 +72,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 32px; /* Fixed height for alignment */
+    height: 32px;
     white-space: nowrap;
 }
 
@@ -82,7 +82,7 @@
     color: #0f172a;
 }
 
-/* Sort Tags Container (Holds the bubbles) */
+/* Sort Tags Container */
 .sort-tags-container {
     display: flex;
     align-items: center;
@@ -90,13 +90,13 @@
     flex-wrap: wrap;
 }
 
-/* Individual Active Sort Badge (Bubble) */
+/* Individual Active Sort Badge */
 .active-sort-pill {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #eff6ff; /* Light Blue BG */
-    color: #1d4ed8;       /* Dark Blue Text */
+    background: #eff6ff;
+    color: #1d4ed8;
     border: 1px solid #bfdbfe;
     padding: 2px 10px;
     border-radius: 999px;
@@ -141,7 +141,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 16px;
-  table-layout: fixed; /* CRITICAL: Prevents layout breaking */
+  table-layout: fixed;
 }
 
 .job-table th,
@@ -167,74 +167,26 @@
   background: #f9fafb;
 }
 
-/* --- COLUMN WIDTHS (Optimized for 9 Columns) --- */
-/* 1. File Name (Takes whatever space is left) */
-.job-table th:nth-child(1),
-.job-table td:nth-child(1) {
-    text-align: left;
-    width: auto;
-}
+/* --- COLUMN WIDTHS --- */
+.job-table th:nth-child(1), .job-table td:nth-child(1) { text-align: left; width: auto; }
+.job-table th:nth-child(2), .job-table td:nth-child(2) { text-align: left; width: 9%; }
+.job-table th:nth-child(3), .job-table td:nth-child(3) { text-align: center; width: 8%; }
+.job-table th:nth-child(4), .job-table td:nth-child(4) { text-align: center; width: 9%; }
+.job-table th:nth-child(5), .job-table td:nth-child(5) { text-align: center; width: 10%; }
+.job-table th:nth-child(6), .job-table td:nth-child(6) { text-align: center; width: 10%; }
+.job-table th:nth-child(7), .job-table td:nth-child(7) { text-align: center; width: 6%; }
+.job-table th:nth-child(8), .job-table td:nth-child(8) { text-align: center; width: 12%; }
 
-/* 2. User */
-.job-table th:nth-child(2),
-.job-table td:nth-child(2) {
-    text-align: left;
-    width: 9%;
-}
-
-/* 3. Document (View Button) */
-.job-table th:nth-child(3),
-.job-table td:nth-child(3) {
-    text-align: center;
-    width: 8%;
-}
-
-/* 4. Status */
-.job-table th:nth-child(4),
-.job-table td:nth-child(4) {
-    text-align: center;
-    width: 9%;
-}
-
-/* 5. Proof of Payment */
-.job-table th:nth-child(5),
-.job-table td:nth-child(5) {
-    text-align: center;
-    width: 10%;
-}
-
-/* 6. Payment Status */
-.job-table th:nth-child(6),
-.job-table td:nth-child(6) {
-    text-align: center;
-    width: 10%;
-}
-
-/* 7. Download */
-.job-table th:nth-child(7),
-.job-table td:nth-child(7) {
-    text-align: center;
-    width: 6%;
-}
-
-/* 8. Payment Control */
-.job-table th:nth-child(8),
-.job-table td:nth-child(8) {
-    text-align: center;
-    width: 12%;
-}
-
-/* --- TEXT STYLES & WRAPPING --- */
+/* --- TEXT STYLES --- */
 .filename-cell {
     position: relative;
 }
 
-/* Updated Wrapper for Left-Side Icon */
 .file-wrapper {
     display: flex;
-    justify-content: flex-start; /* Align left */
+    justify-content: flex-start;
     align-items: center;
-    gap: 10px; /* Space between icon and text */
+    gap: 12px;
     width: 100%;
 }
 
@@ -242,7 +194,71 @@
     white-space: normal;
     word-wrap: break-word;
     word-break: break-all;
-    flex: 1; /* Take remaining space */
+    flex: 1;
+}
+
+/* --- HOVER DELETE BUTTON STYLES (FIXED) --- */
+
+/* 1. Base State (Hidden for everyone) */
+.btn-icon-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s ease, transform 0.2s;
+    padding: 6px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    color: #dc2626;
+    font-weight: 900;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+/* 2. Active Hover State (Visible & Interactive) */
+tr:hover .btn-icon-delete {
+    opacity: 1;
+}
+
+.btn-icon-delete:hover {
+    background-color: #fee2e2;
+    transform: scale(1.1);
+}
+
+/* 3. Disabled Base State (Still Hidden when not hovered) */
+.btn-icon-delete.disabled-x {
+    color: #9ca3af !important; /* Gray */
+    cursor: not-allowed !important;
+    transform: none !important;
+    background-color: transparent !important;
+    opacity: 0; /* Ensure it stays hidden by default */
+}
+
+/* 4. Disabled Hover State (Visible but Faded) */
+tr:hover .btn-icon-delete.disabled-x {
+    opacity: 0.4 !important; /* Only show as faint gray on hover */
+}
+
+/* --- OTHER TEXT STYLES --- */
+.job-table td:not(:first-child) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 0.8em;
+}
+
+.proof-link {
+  text-decoration: underline;
+  color: #15803d;
+  font-weight: 700;
+}
+
+.proof-link:hover {
+  color: #166534;
 }
 
 /* --- BUTTONS & BADGES --- */
@@ -295,7 +311,6 @@
   cursor: not-allowed;
 }
 
-/* Download Circle Button */
 .btn-download {
   display: inline-flex;
   justify-content: center;
@@ -323,29 +338,6 @@
   cursor: not-allowed;
 }
 
-/* HOVER DELETE BUTTON STYLES */
-.btn-icon-delete {
-    background: none;
-    border: none;
-    font-size: 1.1rem;
-    cursor: pointer;
-    opacity: 0; /* Hidden by default */
-    transition: opacity 0.2s ease, transform 0.2s;
-    padding: 4px;
-    border-radius: 4px;
-    flex-shrink: 0; /* Prevent squishing */
-}
-
-.btn-icon-delete:hover {
-    background-color: #fee2e2;
-    transform: scale(1.1);
-}
-
-/* Only show on row hover */
-tr:hover .btn-icon-delete {
-    opacity: 1;
-}
-
 /* --- STATUS COLORS --- */
 .badge-ready { background: #bbf7d0; color: #166534; }
 .badge-unpaid { background: #fee2e2; color: #991b1b; }
@@ -355,23 +347,7 @@ tr:hover .btn-icon-delete {
 .badge-accepted { background: #dcfce7; color: #166534; }
 .badge-rejected { background: #fee2e2; color: #991b1b; }
 
-/* View Proof Link */
-.proof-link {
-  text-decoration: underline;
-  color: #15803d; /* Green */
-  font-weight: 700;
-}
-
-.proof-link:hover {
-  color: #166534;
-}
-
-.muted {
-  color: #6b7280;
-  font-size: 0.8em;
-}
-
-/* --- MODAL STYLES (PDF VIEW) --- */
+/* --- MODAL STYLES --- */
 .modal {
   display: none;
   position: fixed;
@@ -389,7 +365,7 @@ tr:hover .btn-icon-delete {
   background: white;
   width: 90%;
   max-width: 1200px;
-  height: 90vh; /* Fixed height for PDF view */
+  height: 90vh;
   border-radius: 12px;
   position: relative;
   display: flex;
@@ -481,7 +457,7 @@ tr:hover .btn-icon-delete {
     border-radius: 12px;
     padding: 24px;
     position: relative;
-    height: auto; /* Auto height for content */
+    height: auto;
     display: block;
 }
 
@@ -547,11 +523,11 @@ tr:hover .btn-icon-delete {
 .delete-modal-content {
     background: white;
     width: 90%;
-    max-width: 400px; /* Small and focused */
+    max-width: 400px;
     border-radius: 12px;
     padding: 30px;
     position: relative;
-    height: auto; /* Override fixed height */
+    height: auto;
     display: block;
 }
 
@@ -567,7 +543,7 @@ tr:hover .btn-icon-delete {
 }
 
 .delete-input:focus {
-    border-color: #dc2626; /* Red border on focus */
+    border-color: #dc2626;
     outline: none;
 }
 

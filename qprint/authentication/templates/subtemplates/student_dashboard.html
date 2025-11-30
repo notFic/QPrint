@@ -47,14 +47,23 @@
       {% if print_jobs %}
       <div class="history-list">
         {% for job in print_jobs %}
-        <div class="history-item" onclick="openModal('{{ job.id }}')">
-          <div class="history-content">
-            <div class="history-main">
-              <strong>{{ job.file_name }}</strong>
-              <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
+        <div class="history-item">
+            <div class="history-content" onclick="openModal('{{ job.id }}')">
+                <div class="history-main">
+                  <strong>{{ job.file_name }}</strong>
+                  <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
+                </div>
+                <span class="status-badge status-{{ job.status|lower|slugify }}">{{ job.status }}</span>
             </div>
-            <span class="status-badge status-{{ job.status|lower|slugify }}">{{ job.status }}</span>
-          </div>
+
+            {% if job.status == 'Cancelled' %}
+            <button type="button" class="btn-delete-row"
+                    title="Remove from history"
+                    onclick="triggerConfirmation('delete_history', '{{ job.id }}', '{{ job.file_name|escapejs }}')"
+                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">
+                ✕
+            </button>
+            {% endif %}
         </div>
         {% endfor %}
       </div>
@@ -229,28 +238,26 @@
             <div class="formula-box"><div><strong>Formula:</strong></div><div id="bd-formula"></div></div>
           </div>
 
-          <form method="post" id="cancelForm">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="cancel_job">
-            <input type="hidden" name="job_id" id="cancel-job-id">
-            <button type="submit" id="cancelBtn" class="danger-btn">Cancel Print Job</button>
-          </form>
+          <button type="button" id="cancelBtn" class="danger-btn" style="display:none;">Cancel Print Job</button>
 
           <hr style="margin: 18px 0;">
-          <h3>Payment</h3>
-          <p id="no-proof-text" class="muted" style="display:none;">No payment proof submitted yet.</p>
-          <p id="payment-proof-link" style="display:none;">
-            <strong>Uploaded Proof:</strong> <a id="proof-url" href="#" target="_blank">View</a>
-          </p>
-          <form method="post" enctype="multipart/form-data" id="paymentForm" style="display:none;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="upload_payment_proof_modal">
-            <input type="hidden" name="job_id" id="payment-job-id">
-            <input type="file" name="payment_proof" accept="image/*" required>
-            <button type="submit" class="primary-btn" style="margin-top:12px;">Upload Payment Proof</button>
-          </form>
-          <button type="button" class="secondary-btn" style="margin-top:12px;" onclick="openQRModal()">View QR Code</button>
-        </div>
+
+          <div id="payment-section-container">
+              <h3>Payment</h3>
+              <p id="no-proof-text" class="muted" style="display:none;">No payment proof submitted yet.</p>
+              <p id="payment-proof-link" style="display:none;">
+                <strong>Uploaded Proof:</strong> <a id="proof-url" href="#" target="_blank">View</a>
+              </p>
+              <form method="post" enctype="multipart/form-data" id="paymentForm" style="display:none;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="upload_payment_proof_modal">
+                <input type="hidden" name="job_id" id="payment-job-id">
+                <input type="file" name="payment_proof" accept="image/*" required>
+                <button type="submit" class="primary-btn" style="margin-top:12px;">Upload Payment Proof</button>
+              </form>
+              <button type="button" class="secondary-btn" style="margin-top:12px;" onclick="openQRModal()">View QR Code</button>
+          </div>
+          </div>
         <div class="modal-preview"><iframe id="pdfPreview" width="100%" height="500"></iframe></div>
       </div>
     </div>
@@ -266,6 +273,27 @@
         <hr>
         <p><strong>File:</strong> <span id="qr-file-name"></span></p>
         <p><strong>Price:</strong> ₱<span id="qr-file-price"></span></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmationModal" class="modal">
+    <div class="modal-content confirmation-modal-content">
+      <span class="close" onclick="closeConfirmationModal()">×</span>
+      <div style="padding: 20px;">
+          <h2 id="confirm-title" style="margin-top:0; color:#dc2626;">Confirm Action</h2>
+          <p id="confirm-message" style="margin-bottom: 20px; color:#4b5563;">Are you sure?</p>
+
+          <form method="POST" id="confirm-form">
+              {% csrf_token %}
+              <input type="hidden" name="job_id" id="confirm-job-id">
+              <input type="hidden" name="action" id="confirm-action-input" disabled>
+
+              <div style="display: flex; gap: 10px; justify-content: center;">
+                  <button type="button" class="secondary-btn" onclick="closeConfirmationModal()" style="margin-top:0;">No, Go Back</button>
+                  <button type="submit" class="danger-btn" style="margin-top:0;">Yes, Proceed</button>
+              </div>
+          </form>
       </div>
     </div>
   </div>
@@ -305,10 +333,7 @@ function calculateCostJS() {
     document.getElementById('calc-pages').textContent = `${pages}`;
     document.getElementById('calc-total').textContent = total;
 
-    // Set hidden input for backend submission
     document.getElementById('hidden_total_cost').value = total;
-
-    // Show result
     document.getElementById('cost-result-area').style.display = 'block';
 }
 
@@ -316,51 +341,61 @@ function openModal(jobId) {
   fetch(`/api/job/${jobId}/`)
     .then(r => r.json())
     .then(job => {
+      // 1. Basic Fields
       document.getElementById('modal-file').textContent = job.file_name;
       document.getElementById('modal-pages').textContent = job.pages;
       document.getElementById('modal-paper').textContent = job.paper_size;
       document.getElementById('modal-color').textContent = job.color_option;
       document.getElementById('modal-cost').textContent = job.total_cost;
 
-      // FILL BREAKDOWN
+      // 2. Breakdown
       document.getElementById('bd-paper-type').textContent = `${job.paper_type_label || 'Standard'} (₱${job.paper_type_cost || 0})`;
       document.getElementById('bd-paper-size').textContent = `${job.paper_size_label} (₱${job.paper_size_cost})`;
       document.getElementById('bd-print-type').textContent = `${job.color_label} (₱${job.color_cost})`;
       document.getElementById('bd-pages').textContent = `${job.pages} pages`;
       document.getElementById('bd-formula').textContent = `${job.paper_type_cost} + ${job.paper_size_cost} + ${job.color_cost} + (${job.color_cost} × ${job.pages})`;
 
-      // STATUS BADGE
+      // 3. Status Badge & Message
+      const status = job.status;
       const statusEl = document.getElementById('modal-status');
-      statusEl.textContent = job.status;
-      statusEl.className = `badge badge-${job.status.toLowerCase().replace(/\s+/g, '-')}`;
+      statusEl.textContent = status;
+      statusEl.className = `badge badge-${status.toLowerCase().replace(/\s+/g, '-')}`;
 
-      // STATUS MESSAGE
       const msg = document.getElementById('modal-status-message');
       msg.style.display = "block";
-      if (job.status === "Unpaid") msg.textContent = "Please settle your dues.";
-      else if (job.status === "Pending") msg.textContent = "Your job is queued.";
-      else if (job.status === "Ready") msg.textContent = "Ready for pickup!";
+      if (status === "Unpaid") msg.textContent = "Please settle your dues.";
+      else if (status === "Pending") msg.textContent = "Your job is queued.";
+      else if (status === "Ready") msg.textContent = "Ready for pickup!";
+      else if (status === "Cancelled") msg.textContent = "This job has been cancelled.";
       else msg.style.display = "none";
 
       document.getElementById('pdfPreview').src = job.file_url;
 
-      // CANCEL BUTTON LOGIC
+      // 4. CANCEL BUTTON LOGIC (triggers confirmation modal)
       const cancelBtn = document.getElementById('cancelBtn');
-      document.getElementById('cancel-job-id').value = job.id;
-      cancelBtn.style.display = (job.status === "Unpaid" || job.status === "Pending") ? "block" : "none";
+      cancelBtn.onclick = function() { triggerConfirmation('cancel', job.id, job.file_name); };
+      cancelBtn.style.display = (status === "Unpaid" || status === "Pending") ? "block" : "none";
 
-      // PAYMENT LOGIC
-      const paymentForm = document.getElementById('paymentForm');
-      const proofLink = document.getElementById('payment-proof-link');
-      const noProof = document.getElementById('no-proof-text');
-      const proofUrl = document.getElementById('proof-url');
-      document.getElementById('payment-job-id').value = job.id;
+      // 5. Payment Logic (DISABLE IF CANCELLED)
+      const paymentContainer = document.getElementById('payment-section-container');
 
-      if (job.payment_proof_url) {
-        proofLink.style.display = "block"; noProof.style.display = "none"; paymentForm.style.display = "none";
-        proofUrl.href = job.payment_proof_url;
+      if (status === 'Cancelled') {
+          paymentContainer.classList.add('disabled-section');
       } else {
-        noProof.style.display = "block"; paymentForm.style.display = "block"; proofLink.style.display = "none";
+          paymentContainer.classList.remove('disabled-section');
+
+          const paymentForm = document.getElementById('paymentForm');
+          const proofLink = document.getElementById('payment-proof-link');
+          const noProof = document.getElementById('no-proof-text');
+          const proofUrl = document.getElementById('proof-url');
+          document.getElementById('payment-job-id').value = job.id;
+
+          if (job.payment_proof_url) {
+            proofLink.style.display = "block"; noProof.style.display = "none"; paymentForm.style.display = "none";
+            proofUrl.href = job.payment_proof_url;
+          } else {
+            noProof.style.display = "block"; paymentForm.style.display = "block"; proofLink.style.display = "none";
+          }
       }
 
       document.getElementById('jobModal').style.display = "block";
@@ -375,9 +410,52 @@ function openQRModal() {
 
 function closeModal() { document.getElementById('jobModal').style.display = 'none'; }
 function closeQRModal() { document.getElementById('qrModal').style.display = 'none'; }
-window.onclick = e => { if (e.target === document.getElementById('jobModal')) closeModal(); if (e.target === document.getElementById('qrModal')) closeQRModal(); };
 
-// BREAKDOWN TOGGLE
+// --- CONFIRMATION MODAL LOGIC ---
+function triggerConfirmation(type, jobId, fileName) {
+    const modal = document.getElementById('confirmationModal');
+    const title = document.getElementById('confirm-title');
+    const message = document.getElementById('confirm-message');
+    const form = document.getElementById('confirm-form');
+    const inputId = document.getElementById('confirm-job-id');
+    const inputAction = document.getElementById('confirm-action-input');
+
+    inputId.value = jobId;
+
+    if (type === 'cancel') {
+        // CANCEL JOB from Modal
+        title.textContent = "Cancel Print Job?";
+        message.innerHTML = `Are you sure you want to cancel <br><strong>${fileName}</strong>?`;
+
+        // POST to current page with action="cancel_job"
+        form.action = "";
+        inputAction.disabled = false;
+        inputAction.value = "cancel_job";
+
+    } else if (type === 'delete_history') {
+        // DELETE CANCELLED JOB from History List
+        title.textContent = "Delete from History?";
+        message.innerHTML = `Are you sure you want to remove <br><strong>${fileName}</strong> from your history?`;
+
+        // POST to student_delete_job URL
+        form.action = "{% url 'student_delete_job' %}";
+        inputAction.disabled = true;
+    }
+
+    modal.style.display = "block";
+    closeModal();
+}
+
+function closeConfirmationModal() {
+    document.getElementById('confirmationModal').style.display = "none";
+}
+
+window.onclick = e => {
+    if (e.target === document.getElementById('jobModal')) closeModal();
+    if (e.target === document.getElementById('qrModal')) closeQRModal();
+    if (e.target === document.getElementById('confirmationModal')) closeConfirmationModal();
+};
+
 document.getElementById('breakdownBtn').addEventListener('click', () => {
   const box = document.getElementById('breakdownBox');
   const btn = document.getElementById('breakdownBtn');

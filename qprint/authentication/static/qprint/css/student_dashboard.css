@@ -79,11 +79,13 @@
   box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
 }
 
+/* GLOBAL BUTTON STYLES */
 .secondary-btn,
 .primary-btn,
 .clear-btn,
 .danger-btn {
-  width: 100%; padding: 12px;
+  width: 100%;
+  padding: 12px;
   border: none; border-radius: 8px;
   font-weight: 700; font-size: 1rem;
   cursor: pointer; margin-top: 16px;
@@ -122,19 +124,63 @@
 .pdf-iframe { width: 100%; height: 100%; border: none; }
 .preview-placeholder { color: var(--muted); text-align: center; }
 
-.job-list {
-  list-style: none; padding: 0; margin: 0;
-  max-height: 340px; overflow-y: auto;
+/* HISTORY LIST */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
 }
-.job-item {
+.history-header h2 { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0; }
+.history-count { font-weight: 600; color: var(--muted); font-size: 0.95rem; }
+.history-list { display: flex; flex-direction: column; gap: 12px; max-height: 340px; overflow-y: auto; }
+
+/* Fixed clickable row + delete button */
+.history-item {
+  position: relative;                    /* establishes stacking context */
   padding: 12px 0;
   border-bottom: 1px solid #e5e7eb;
-  display: flex; justify-content: space-between; align-items: center;
-  cursor: pointer;
   transition: background 0.2s;
 }
-.job-item:hover { background: #f3f4f6; }
-.job-item:last-child { border-bottom: none; }
+.history-item:hover { background: #f3f4f6; }
+.history-item:last-child { border-bottom: none; }
+
+.history-content {
+  flex: 1;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 60px;                   /* makes space for the X button */
+  position: relative;                    /* needed for z-index stacking */
+  z-index: 1;
+}
+
+/* DELETE BUTTON (Red X) – now always visible and clickable */
+.btn-delete-row {
+  background: transparent;
+  border: none;
+  color: #dc2626;
+  font-weight: 900;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+  line-height: 1;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;                           /* above .history-content */
+}
+.btn-delete-row:hover {
+  opacity: 1;
+  background-color: #fee2e2;
+}
 
 .badge {
   padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
@@ -183,33 +229,7 @@
   border-radius: 6px;
 }
 
-/* History Card Styles */
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 2px solid #e5e7eb;
-  padding-bottom: 16px;
-  margin-bottom: 20px;
-}
-.history-header h2 { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0; }
-.history-count { font-weight: 600; color: var(--muted); font-size: 0.95rem; }
-.history-list { display: flex; flex-direction: column; gap: 12px; max-height: 340px; overflow-y: auto; }
-.history-item {
-  padding: 16px; border: 1px solid #f3f4f6; border-radius: 8px;
-  background: #fafbfc; cursor: pointer; transition: all 0.2s;
-}
-.history-item:hover {
-  background: #f8fafc; border-color: #e5e7eb; transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-.history-content { display: flex; justify-content: space-between; align-items: center; }
-.history-main { flex: 1; }
-.history-main strong { display: block; color: #111827; font-size: 0.95rem; margin-bottom: 4px; }
-.history-main small { color: var(--muted); font-size: 0.85rem; }
-.no-history { text-align: center; padding: 40px 0; color: var(--muted); }
-
-/* Invoice Card Styles */
+/* Invoice Card */
 .invoice-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
 .invoice-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -230,7 +250,7 @@
 .value { color: #111827; text-align: right; font-size: 0.9rem; }
 .total-cost { font-size: 1rem; font-weight: 700; color: #15803d; }
 .status-badge {
-  padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; text-transform: uppercase;
 }
 .status-completed { background: #d1fae5; color: #065f46; }
 .status-processing { background: #fef3c7; color: #92400e; }
@@ -238,8 +258,8 @@
 .status-unpaid { background: #fee2e2; color: #991b1b; }
 .status-ready { background: #dbeafe; color: #1e40af; }
 .status-failed { background: #fee2e2; color: #991b1b; }
+.status-cancelled { background: #fee2e2; color: #991b1b; }
 .no-invoice { text-align: center; padding: 40px 0; color: var(--muted); }
-
 
 /* Alerts */
 .history-alert {
@@ -268,4 +288,21 @@
 .formula-box {
   margin-top: 10px; padding: 10px;
   background: #eef2ff; border-radius: 6px; font-size: 0.85rem;
+}
+
+/* Disabled Section (used when job is Cancelled) */
+.disabled-section {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(100%);
+    user-select: none;
+}
+
+/* Confirmation Modal Buttons Fix */
+.confirmation-modal-content .secondary-btn,
+.confirmation-modal-content .danger-btn {
+    width: 48% !important;
+    margin-top: 0 !important;
+    padding: 12px 10px;
+    white-space: nowrap;
 }

@@ -58,7 +58,6 @@ def generate_invoice_number():
     random_part = secrets.token_hex(3).upper()
     return f"INV-{date_part}-{random_part}"
 
-
 def check_print_eligibility(job):
     """Check if job can be printed"""
     if job.get('is_paid') == False:
@@ -336,7 +335,7 @@ def login(request):
 
     return render(request, "subtemplates/login.html")
 
-
+@login_required
 def logout(request):
     if request.user.is_authenticated:
         try:
@@ -350,7 +349,10 @@ def logout(request):
             print(f"Supabase activity logging error: {e}")
 
         auth_logout(request)
-        messages.success(request, "You have been logged out successfully.")
+
+        storage = messages.get_messages(request)
+        storage.used = True
+
     else:
         messages.info(request, "You were not logged in.")
 
@@ -841,3 +843,33 @@ def check_print_status(request, job_id):
         'status': job.get('status'),
         'is_paid': job.get('is_paid')
     })
+
+
+# In views.py
+
+@login_required
+def student_delete_job(request):
+    """Allows student to remove a job from history ONLY if it is Cancelled"""
+    if request.method == "POST":
+        job_id = request.POST.get("job_id")
+
+        # 1. Fetch Job (Ensure user owns it)
+        job_resp = supabase.table('print_jobs') \
+            .select('*') \
+            .eq('id', job_id) \
+            .eq('user_id', request.user.id) \
+            .execute()
+
+        if job_resp.data:
+            job = job_resp.data[0]
+
+            # 2. STRICT CHECK: Must be 'Cancelled'
+            if job.get('status') == 'Cancelled':
+                # Delete Record (Files should already be gone from cancel action)
+                supabase.table('print_jobs').delete().eq('id', job_id).execute()
+
+                request.session['cancel_msg'] = f"Removed '{job['file_name']}' from history."
+            else:
+                messages.error(request, "Only cancelled jobs can be deleted.")
+
+    return redirect('student_dashboard')
