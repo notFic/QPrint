@@ -48,12 +48,14 @@
             <tr>
                 <th>File Name</th>
                 <th>User</th>
+                <th>Uploaded at</th>
                 <th>Document</th>
                 <th>Status</th>
                 <th>Proof of Payment</th>
                 <th>Payment Status</th>
                 <th>Download</th>
-                <th>Payment Control</th>
+                <th>Notify Print Ready</th>
+                <th>Completion</th>
             </tr>
         </thead>
 
@@ -80,6 +82,13 @@
 
                 <td>{{ job.username }}</td>
 
+                {# --- FIX: UPLOADED AT COLUMN --- #}
+                <td>
+                    <span title="{{ job.submitted_at }}">
+                        {{ job.submitted_at|date:"Y-m-d H:i"|default:"N/A" }}
+                    </span>
+                </td>
+
                 <td style="text-align: center;">
                     <button type="button" class="btn-secondary btn-small"
                             onclick="openStaffModal('{{ job.id }}')">
@@ -88,7 +97,7 @@
                 </td>
 
                 <td>
-                    <span class="badge badge-{{ job.status|lower }}">
+                    <span class="badge badge-{{ job.status|lower|slugify }}">
                         {{ job.status }}
                     </span>
                 </td>
@@ -123,19 +132,20 @@
                     {% endif %}
                 </td>
 
+                {# --- NEW COLUMN LOCATION: NOTIFY PRINT READY (formerly Payment & Print) --- #}
                 <td>
                     {% if job.payment_proof_url and job.payment_status == "Pending Review" %}
                         <div style="display:flex; gap:4px; margin-bottom: 4px; justify-content: center;">
                             <form method="POST" action="{% url 'staff_update_payment' %}">
                                 {% csrf_token %}
                                 <input type="hidden" name="job_id" value="{{ job.id }}">
-                                <button name="action" value="accept" class="btn-success btn-small">✓</button>
+                                <button name="action" value="accept" class="btn-success btn-small">✓ Accept</button>
                             </form>
 
                             <form method="POST" action="{% url 'staff_update_payment' %}">
                                 {% csrf_token %}
                                 <input type="hidden" name="job_id" value="{{ job.id }}">
-                                <button name="action" value="reject" class="btn-danger btn-small">✕</button>
+                                <button name="action" value="reject" class="btn-danger btn-small">✕ Reject</button>
                             </form>
                         </div>
                     {% endif %}
@@ -144,9 +154,31 @@
                         {% csrf_token %}
                         <input type="hidden" name="job_id" value="{{ job.id }}">
                         <button class="btn-primary btn-small" style="width: 100%;"
-                            {% if job.payment_status != "Accepted" %}disabled{% endif %}>
-                            Mark Ready
+                            {% if job.payment_status != "Accepted" or job.status == "Ready" or job.status == "Completed" %}disabled{% endif %}>
+                            Notify User
                         </button>
+                    </form>
+                </td>
+
+                {# --- OLD COLUMN LOCATION: COMPLETION TOGGLE (formerly Completion) --- #}
+                <td>
+                    <form method="POST" action="{% url 'staff_complete_job' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="job_id" value="{{ job.id }}">
+
+                        {% if job.status == 'Completed' %}
+                            <button name="action" value="unmark_completed" class="btn-secondary btn-small">
+                                Undo Complete
+                            </button>
+                        {% elif job.status == 'Ready' %}
+                            <button name="action" value="mark_completed" class="btn-success btn-small">
+                                Mark Completed
+                            </button>
+                        {% else %}
+                            <button disabled class="btn-secondary btn-small" style="opacity: 0.5;">
+                                Pending Print
+                            </button>
+                        {% endif %}
                     </form>
                 </td>
             </tr>
@@ -158,7 +190,6 @@
     {% endif %}
   </div>
 
-  <!-- STAFF PREVIEW MODAL -->
   <div id="staffModal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="closeStaffModal()">×</span>
@@ -180,7 +211,6 @@
     </div>
   </div>
 
-  <!-- SORT MODAL -->
   <div id="sortModal" class="modal">
       <form method="GET" action="{% url 'staff_dashboard' %}" class="sort-modal-content">
 
@@ -190,8 +220,7 @@
         </div>
 
         <div class="sort-grid">
-            <!-- original unchanged content -->
-        </div>
+            </div>
 
         <div class="sort-footer">
             <a href="{% url 'staff_dashboard' %}" class="btn-secondary" style="text-decoration:none; text-align:center;">Reset Default</a>
@@ -200,7 +229,6 @@
       </form>
   </div>
 
-  <!-- DELETE MODAL -->
   <div id="deleteModal" class="modal">
     <div class="modal-content delete-modal-content">
         <span class="close" onclick="closeDeleteModal()">×</span>
@@ -210,7 +238,6 @@
 
             <h2 style="color: #dc2626; margin-bottom: 10px;">Delete File?</h2>
 
-            <!-- Username + filename -->
             <p style="color: #4b5563; margin-bottom: 20px;">
                 Are you sure you want to permanently delete <br>
                 <strong id="delete-filename">...</strong> from <strong id="delete-username">...</strong>?

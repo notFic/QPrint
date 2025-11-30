@@ -17,6 +17,8 @@ urlpatterns = [
     path('payments/', include('payments.urls')),
     path('staff/delete-job/', views.staff_delete_job, name='staff_delete_job'),
     path('student/delete-job/', views.student_delete_job, name='student_delete_job'),
+    path('staff-complete-job/', views.staff_complete_job, name='staff_complete_job'),
+
 
     # Invoice URLs
     path("invoices/", views.invoice_list, name="invoice_list"),

@@ -167,15 +167,18 @@
   background: #f9fafb;
 }
 
-/* --- COLUMN WIDTHS --- */
-.job-table th:nth-child(1), .job-table td:nth-child(1) { text-align: left; width: auto; }
-.job-table th:nth-child(2), .job-table td:nth-child(2) { text-align: left; width: 9%; }
-.job-table th:nth-child(3), .job-table td:nth-child(3) { text-align: center; width: 8%; }
-.job-table th:nth-child(4), .job-table td:nth-child(4) { text-align: center; width: 9%; }
-.job-table th:nth-child(5), .job-table td:nth-child(5) { text-align: center; width: 10%; }
-.job-table th:nth-child(6), .job-table td:nth-child(6) { text-align: center; width: 10%; }
-.job-table th:nth-child(7), .job-table td:nth-child(7) { text-align: center; width: 6%; }
-.job-table th:nth-child(8), .job-table td:nth-child(8) { text-align: center; width: 12%; }
+/* --- COLUMN WIDTHS (UPDATED to reflect swap and new sizes) --- */
+/* 1: File Name | 2: User | 3: Uploaded at | 4: Document | 5: Status | 6: Proof | 7: Payment Status | 8: Download | 9: Notify Print Ready | 10: Completion */
+.job-table th:nth-child(1), .job-table td:nth-child(1) { text-align: left; width: 25%; } /* File Name */
+.job-table th:nth-child(2), .job-table td:nth-child(2) { text-align: left; width: 8%; } /* User */
+.job-table th:nth-child(3), .job-table td:nth-child(3) { text-align: left; width: 8%; } /* Uploaded at */
+.job-table th:nth-child(4), .job-table td:nth-child(4) { text-align: center; width: 7%; } /* Document */
+.job-table th:nth-child(5), .job-table td:nth-child(5) { text-align: center; width: 8%; } /* Status */
+.job-table th:nth-child(6), .job-table td:nth-child(6) { text-align: center; width: 9%; } /* Proof of Payment */
+.job-table th:nth-child(7), .job-table td:nth-child(7) { text-align: center; width: 9%; } /* Payment Status */
+.job-table th:nth-child(8), .job-table td:nth-child(8) { text-align: center; width: 5%; } /* Download */
+.job-table th:nth-child(9), .job-table td:nth-child(9) { text-align: center; width: 11%; } /* Notify Print Ready (RENAMED/SWAPPED) */
+.job-table th:nth-child(10), .job-table td:nth-child(10) { text-align: center; width: 10%; } /* Completion (SWAPPED) */
 
 /* --- TEXT STYLES --- */
 .filename-cell {
@@ -346,6 +349,7 @@ tr:hover .btn-icon-delete.disabled-x {
 .badge-cancelled { background: #f3f4f6; color: #6b7280; text-decoration: line-through; }
 .badge-accepted { background: #dcfce7; color: #166534; }
 .badge-rejected { background: #fee2e2; color: #991b1b; }
+.badge-completed { background: #cffafe; color: #0891b2; font-weight: 700; } /* NEW */
 
 /* --- MODAL STYLES --- */
 .modal {

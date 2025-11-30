@@ -29,8 +29,6 @@ from django.utils import timezone
 supabase = settings.SUPABASE_CLIENT
 bucket = settings.SUPABASE_BUCKET
 
-
-# --- GLOBAL CONFIGURATION (Defined ONCE) ---
 MAX_PREVIEW_SIZE = 25 * 1024 * 1024  # 25 MB
 
 PRICING_CONFIG = {
@@ -50,43 +48,6 @@ PRICING_CONFIG = {
     }
 }
 
-
-# --- Invoice System Functions ---
-def generate_invoice_number():
-    """Generate unique invoice number: INV-YYYYMMDD-XXXXX"""
-    date_part = datetime.now().strftime("%Y%m%d")
-    random_part = secrets.token_hex(3).upper()
-    return f"INV-{date_part}-{random_part}"
-
-def check_print_eligibility(job):
-    """Check if job can be printed"""
-    if job.get('is_paid') == False:
-        return False, "Invoice unpaid - please complete payment first"
-    elif job.get('status') == 'Pending Review':
-        return False, "Payment pending review"
-    elif job.get('status') == 'Cancelled':
-        return False, "Job was cancelled"
-    elif job.get('status') == 'Overdue':
-        return False, "Payment overdue - please contact support"
-    return True, "Eligible for printing"
-
-
-def update_overdue_invoices(user_id=None):
-    """Mark invoices as overdue if past deadline"""
-    now = timezone.now().isoformat()
-    query = supabase.table('print_jobs') \
-        .update({'status': 'Overdue'}) \
-        .eq('is_paid', False) \
-        .lt('due_date', now) \
-        .eq('status', 'Unpaid')
-
-    if user_id:
-        query = query.eq('user_id', user_id)
-
-    query.execute()
-
-
-# --- Auth Helpers ---
 def send_password_reset_email(request, email):
     try:
         user = User.objects.get(email=email)
@@ -122,11 +83,6 @@ def send_password_reset_email(request, email):
 
 
 def _send_otp_email(email, otp):
-    # DEBUG MODE: Print OTP to console
-    print(f"\n========================================")
-    print(f" DEBUG MODE - OTP for {email}: {otp}")
-    print(f"========================================\n")
-
     message = Mail(
         from_email="qprintapp@gmail.com",
         to_emails=email,
@@ -134,15 +90,11 @@ def _send_otp_email(email, otp):
         plain_text_content=f"Hello,\n\nYour OTP is: {otp}\n\nIf you didn't request this, ignore this email.",
     )
     try:
-        api_key = os.getenv("SENDGRID_API_KEY")
-        if api_key:
-            sg = SendGridAPIClient(api_key)
-            sg.send(message)
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        sg.send(message)
     except Exception as e:
         print(f"SendGrid error: {e}")
 
-
-# --- Auth Views ---
 def register(request):
     if request.method == "POST":
         username = request.POST["username"]
@@ -301,7 +253,6 @@ def verify(request):
 
     return render(request, "subtemplates/verify.html")
 
-
 def login(request):
     if request.method == "POST":
         username = request.POST["username"]
@@ -381,7 +332,7 @@ def reset_password(request, uidb64, token):
                 validate_password(new_password, user)
             except ValidationError as e:
                 messages.error(request, e.messages[0])
-                return render(request, 'subtemplates/reset_password_form.html', {'validlink': True})
+                return render(request, 'subtemplates/reset_password_form.html',{'validlink': True})
 
             user.set_password(new_password)
             user.save()
@@ -391,13 +342,11 @@ def reset_password(request, uidb64, token):
         return render(request, 'subtemplates/reset_password_form.html', {'validlink': False})
 
 
-# --- STAFF DASHBOARD ---
 @login_required(login_url='login')
 def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
 
-    # Update overdue invoices
     update_overdue_invoices()
 
     jobs_resp = supabase.table('print_jobs') \
@@ -407,25 +356,32 @@ def staff_dashboard(request):
 
     jobs = jobs_resp.data or []
 
-    # --- MULTI-SORTING LOGIC ---
+    for job in jobs:
+        submitted_at_str = job.get('submitted_at')
+        if submitted_at_str:
+            try:
+                dt_obj = datetime.fromisoformat(submitted_at_str.replace('Z', ''))
+
+                job['submitted_at'] = timezone.make_aware(dt_obj)
+
+            except ValueError:
+                job['submitted_at'] = None
+
     active_sorts = request.GET.getlist('sort')
 
     if not active_sorts:
         active_sorts = ['newest']
 
-    # PRIORITY 3: TIME
     if 'oldest' in active_sorts:
-        jobs.sort(key=lambda x: x['submitted_at'])
+        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=False)
     elif 'newest' in active_sorts:
-        jobs.sort(key=lambda x: x['submitted_at'], reverse=True)
+        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=True)
     else:
-        jobs.sort(key=lambda x: x['submitted_at'], reverse=True)
+        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=True)
 
-    # PRIORITY 2: LOOKUP
     if 'user_az' in active_sorts:
         jobs.sort(key=lambda x: x['username'].lower())
 
-    # PRIORITY 1: BATCHING
     if 'largest_job' in active_sorts:
         jobs.sort(key=lambda x: x['pages'], reverse=True)
     if 'smallest_job' in active_sorts:
@@ -435,7 +391,6 @@ def staff_dashboard(request):
     if 'paper_glossy' in active_sorts:
         jobs.sort(key=lambda x: (x.get('paper_type') != 'glossy'))
 
-    # PRIORITY 0: CRITICAL STATUS
     if 'unpaid' in active_sorts:
         jobs.sort(key=lambda x: (x['status'] not in ['Unpaid', 'Overdue']))
     if 'ready_print' in active_sorts:
@@ -443,7 +398,6 @@ def staff_dashboard(request):
     if 'pending_payment' in active_sorts:
         jobs.sort(key=lambda x: (x['payment_status'] != 'Pending Review'))
 
-    # CLEAN TEXT LABELS (No Emojis)
     sort_labels = {
         'newest': 'Newest First', 'oldest': 'Oldest First',
         'pending_payment': 'Pending Review', 'ready_print': 'Ready to Print',
@@ -452,7 +406,6 @@ def staff_dashboard(request):
         'largest_job': 'Largest First', 'user_az': 'User A-Z'
     }
 
-    # NEW: Create list of filter objects for removal pills
     active_filters = []
     for sort_key in active_sorts:
         if sort_key == 'newest' and len(active_sorts) == 1:
@@ -491,14 +444,9 @@ def staff_delete_job(request):
         if job_resp.data:
             job = job_resp.data[0]
 
-            # --- LOGIC UPDATE: PROTECT PAID JOBS ---
-            # If the job is Paid or Completed, do NOT allow hard deletion via this button.
             if job.get('is_paid') == True or job.get('status') == 'Completed':
                 messages.error(request, "Cannot delete a Paid or Completed job. Archive it instead.")
                 return redirect('staff_dashboard')
-            # ---------------------------------------
-
-            # 1. Delete File from Storage
             try:
                 file_path_parts = job['file_url'].split('/')[-3:]
                 file_path = "/".join(file_path_parts)
@@ -513,7 +461,6 @@ def staff_delete_job(request):
 
             # 2. Delete Record
             supabase.table('print_jobs').delete().eq('id', job_id).execute()
-            messages.success(request, f"Job '{job['file_name']}' deleted successfully.")
 
         else:
             messages.error(request, "Job not found.")
@@ -677,7 +624,6 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                     "payment_status": "Pending Review",
                     "status": "Pending Review",
                 }).eq("id", job_id).execute()
-                messages.success(request, "Payment proof uploaded.")
             return redirect("student_dashboard")
 
     else:
@@ -772,23 +718,36 @@ def invoice_list(request):
     }
     return render(request, 'subtemplates/invoice_list.html', context)
 
+
 @login_required
 def staff_update_payment(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
         action = request.POST.get("action")
 
-        new_status = "Accepted" if action == "accept" else "Rejected"
-        is_paid = action == "accept"
-        job_status = "Ready" if action == "accept" else "Unpaid"
+        # Acceptance logic
+        if action == "accept":
+            new_payment_status = "Accepted"
+            is_paid = True
+            # FIX: Change job status from "Ready" to "Pending" upon acceptance.
+            job_status = "Pending"
+
+            # Rejection logic
+        elif action == "reject":
+            new_payment_status = "Rejected"
+            is_paid = False
+            job_status = "Unpaid"  # Revert to Unpaid status if payment is rejected
+
+        else:
+            messages.error(request, "Invalid action.")
+            return redirect("staff_dashboard")
 
         supabase.table("print_jobs").update({
-            "payment_status": new_status,
+            "payment_status": new_payment_status,
             "is_paid": is_paid,
             "status": job_status
         }).eq("id", job_id).execute()
 
-        messages.success(request, f"Payment proof {new_status.lower()}.")
         return redirect("staff_dashboard")
 
 
@@ -797,9 +756,9 @@ def staff_confirm_job(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
 
-        # Only allow if payment is accepted
+        # Fetch current status, payment status, and is_paid
         job_resp = supabase.table("print_jobs") \
-            .select("payment_status, is_paid") \
+            .select("status, payment_status, is_paid") \
             .eq("id", job_id) \
             .execute()
 
@@ -813,11 +772,16 @@ def staff_confirm_job(request):
             messages.error(request, "Cannot confirm. Payment has not been accepted.")
             return redirect("staff_dashboard")
 
+        # NEW CHECK: Only allow status change from "Pending"
+        if job["status"] not in ["Pending"]:
+            messages.error(request, "Job must be 'Pending' before marking as Ready.")
+            return redirect("staff_dashboard")
+
+        # New status is "Ready"
         supabase.table("print_jobs").update({
             "status": "Ready"
         }).eq("id", job_id).execute()
 
-        messages.success(request, "Job marked as Ready for pickup.")
         return redirect("staff_dashboard")
 
 
@@ -873,3 +837,77 @@ def student_delete_job(request):
                 messages.error(request, "Only cancelled jobs can be deleted.")
 
     return redirect('student_dashboard')
+
+
+# --- Invoice System Functions ---
+def generate_invoice_number():
+    """Generate unique invoice number: INV-YYYYMMDD-XXXXX"""
+    date_part = datetime.now().strftime("%Y%m%d")
+    random_part = secrets.token_hex(3).upper()
+    return f"INV-{date_part}-{random_part}"
+
+def check_print_eligibility(job):
+    """Check if job can be printed"""
+    if job.get('is_paid') == False:
+        return False, "Invoice unpaid - please complete payment first"
+    elif job.get('status') == 'Pending Review':
+        return False, "Payment pending review"
+    elif job.get('status') == 'Cancelled':
+        return False, "Job was cancelled"
+    elif job.get('status') == 'Overdue':
+        return False, "Payment overdue - please contact support"
+    return True, "Eligible for printing"
+
+@login_required
+def staff_complete_job(request):
+    """Allows staff to mark a job as completed (picked up)."""
+    if request.method == "POST" and request.user.is_staff:
+        job_id = request.POST.get("job_id")
+        action = request.POST.get("action")
+
+        job_resp = supabase.table("print_jobs") \
+            .select("status, is_paid") \
+            .eq("id", job_id) \
+            .execute()
+
+        if not job_resp.data:
+            messages.error(request, "Job not found.")
+            return redirect("staff_dashboard")
+
+        job = job_resp.data[0]
+
+        # Ensure job is Ready or Completed before proceeding
+        if job["status"] not in ["Ready", "Completed"]:
+            messages.error(request, "Job must be 'Ready' or already 'Completed' to change status.")
+            return redirect("staff_dashboard")
+
+        # Toggle completion status
+        if action == "mark_completed":
+            new_status = "Completed"
+        elif action == "unmark_completed":
+            # If unmarking, revert to 'Ready'
+            new_status = "Ready"
+        else:
+            messages.error(request, "Invalid action.")
+            return redirect("staff_dashboard")
+
+        supabase.table("print_jobs").update({
+            "status": new_status
+        }).eq("id", job_id).execute()
+
+        return redirect("staff_dashboard")
+
+def update_overdue_invoices(user_id=None):
+    """Mark invoices as overdue if past deadline"""
+    now = timezone.now().isoformat()
+    query = supabase.table('print_jobs') \
+        .update({'status': 'Overdue'}) \
+        .eq('is_paid', False) \
+        .lt('due_date', now) \
+        .eq('status', 'Unpaid')
+
+    if user_id:
+        query = query.eq('user_id', user_id)
+
+    query.execute()
+
