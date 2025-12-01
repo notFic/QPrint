@@ -12,9 +12,9 @@
 
 <a href="{% url 'staff_job_history' %}">History Archive</a>
 
-<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
+<a href="{% url 'revenue_dashboard' %}">Reports</a>
 
-<!--<a href="#settings">Settings</a>-->
+<a href="#settings">Settings</a>
 
 <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
@@ -122,7 +122,6 @@
                     </span>
 
                     {# --- ACCEPT/REJECT BUTTONS --- #}
-                    {# Only show if proof exists AND status is Verifying/Pending Review #}
                     {% if job.payment_proof_url %}
                         {% if job.payment_status == 'Verifying' or job.payment_status == 'Pending Review' %}
                         <div style="display:flex; gap:4px; margin-top: 8px; justify-content: center;">
@@ -160,10 +159,18 @@
                     <form method="POST" action="{% url 'staff_confirm_job' %}">
                         {% csrf_token %}
                         <input type="hidden" name="job_id" value="{{ job.id }}">
-                        <button class="btn-primary btn-small" style="width: 100%;"
-                            {% if job.payment_status != "Accepted" or job.status == "Ready" or job.status == "Completed" %}disabled{% endif %}>
-                            🔔 Notify User
-                        </button>
+
+                        {% if job.status == 'Ready' %}
+                            <button class="btn-secondary btn-small" style="width: 100%; background-color: #fff7ed; color: #c2410c; border-color: #fdba74;"
+                                title="Send pickup reminder email">
+                                🔔 Remind
+                            </button>
+                        {% else %}
+                            <button class="btn-primary btn-small" style="width: 100%;"
+                                {% if job.payment_status != "Accepted" or job.status == "Completed" %}disabled{% endif %}>
+                                🔔 Notify User
+                            </button>
+                        {% endif %}
                     </form>
                 </td>
 

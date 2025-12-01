@@ -8,6 +8,7 @@ import base64
 import PyPDF2
 from io import BytesIO
 import pytz
+import time
 
 from django.http import JsonResponse, HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
@@ -758,17 +759,25 @@ def staff_update_payment(request):
 
         return redirect("staff_dashboard")
 
+
 @login_required
 def staff_confirm_job(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
 
-        # Fetch current status, payment status, and is_paid
-        job_resp = supabase.table("print_jobs") \
-            .select("status, payment_status, is_paid") \
-            .eq("id", job_id) \
-            .execute()
+        # --- 1. SPAM PREVENTION (30 Seconds) ---
+        cooldown_key = f"notify_cooldown_{job_id}"
+        last_sent = request.session.get(cooldown_key, 0)
+        current_time = time.time()
 
+        if current_time - last_sent < 30:
+            remaining = int(30 - (current_time - last_sent))
+            messages.warning(request, f"Please wait {remaining}s before sending another email.")
+            return redirect("staff_dashboard")
+        # ---------------------------------------
+
+        # Fetch Data
+        job_resp = supabase.table("print_jobs").select("*").eq("id", job_id).execute()
         if not job_resp.data:
             messages.error(request, "Job not found.")
             return redirect("staff_dashboard")
@@ -779,14 +788,37 @@ def staff_confirm_job(request):
             messages.error(request, "Cannot confirm. Payment has not been accepted.")
             return redirect("staff_dashboard")
 
-        if job["status"] not in ["Pending", "On Queue"]:
-            messages.error(request, "Job must be 'On Queue' before marking as Ready.")
+        # Check valid status
+        if job["status"] not in ["Pending", "On Queue", "Ready"]:
+            messages.error(request, "Job must be 'On Queue' or 'Ready' to notify user.")
             return redirect("staff_dashboard")
 
-        # New status is "Ready"
-        supabase.table("print_jobs").update({
-            "status": "Ready"
-        }).eq("id", job_id).execute()
+        # --- 2. GET EMAIL ---
+        student_email = None
+        try:
+            student_user = User.objects.get(id=job['user_id'])
+            student_email = student_user.email
+        except User.DoesNotExist:
+            print("Student user not found.")
+
+        # --- 3. EXECUTE ---
+        if job["status"] == "Ready":
+            # Reminder Mode
+            if student_email:
+                send_ready_email(student_email, job['file_name'], is_reminder=True)
+
+            messages.success(request, "Reminder email sent.")
+            request.session[cooldown_key] = current_time
+
+        else:
+            # First Time Ready Mode
+            supabase.table("print_jobs").update({"status": "Ready"}).eq("id", job_id).execute()
+
+            if student_email:
+                send_ready_email(student_email, job['file_name'], is_reminder=False)
+
+            messages.success(request, "Job Ready. Email sent.")
+            request.session[cooldown_key] = current_time
 
         return redirect("staff_dashboard")
 
@@ -945,3 +977,29 @@ def staff_job_history(request):
     return render(request, 'subtemplates/staff_job_history.html', {
         'completed_jobs': completed_jobs
     })
+
+
+def send_ready_email(email, filename, is_reminder=False):
+    """Sends a notification using the existing SendGrid setup."""
+    subject = "Reminder: Your Print Job is Ready!" if is_reminder else "Your Print Job is Ready!"
+
+    body = (
+        f"Hello,\n\n"
+        f"Good news! Your document '{filename}' is printed and ready for pickup.\n"
+        f"Please head to the printing station to collect it.\n\n"
+        f"Thank you for using QPrint."
+    )
+
+    message = Mail(
+        from_email="qprintapp@gmail.com",
+        to_emails=email,
+        subject=subject,
+        plain_text_content=body,
+    )
+
+    try:
+        # Reusing your existing SendGrid Client pattern
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        sg.send(message)
+    except Exception as e:
+        print(f"SendGrid error: {e}")
