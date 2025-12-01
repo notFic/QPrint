@@ -30,7 +30,7 @@
   <div class="top-grid">
     <div class="card history-card">
       <div class="history-header">
-        <h2>Print-Job History</h2>
+        <h2>Active Print Jobs</h2>
         <div class="history-count">
           {% if print_jobs %}{{ print_jobs|length }} job{{ print_jobs|length|pluralize }}{% endif %}
         </div>
@@ -68,14 +68,16 @@
         {% endfor %}
       </div>
       {% else %}
-      <div class="no-history"><p class="muted">No jobs yet.</p></div>
-      {% endif %}
-
-      {% if print_jobs %}
-      <div style="margin-top: 16px; text-align: center;">
-        <a href="{% url 'invoice_list' %}" class="secondary-btn" style="width: auto; padding: 8px 16px;">View All Invoices</a>
+      <div class="no-history" style="flex: 1; display:flex; align-items:center; justify-content:center;">
+          <p class="muted">No active jobs.</p>
       </div>
       {% endif %}
+
+      <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center;">
+        <a href="{% url 'print_job_history' %}" class="secondary-btn" style="width: 100%; display: block; text-align: center; margin: 0;">
+            View Print Job History
+        </a>
+      </div>
     </div>
 
     <div class="card invoice-card">
@@ -481,6 +483,7 @@ window.onclick = e => {
     if (e.target === document.getElementById('jobModal')) closeModal();
     if (e.target === document.getElementById('qrModal')) closeQRModal();
     if (e.target === document.getElementById('confirmationModal')) closeConfirmationModal();
+    /* Terms modal is handled by base template logic now */
 };
 
 document.getElementById('breakdownBtn').addEventListener('click', () => {

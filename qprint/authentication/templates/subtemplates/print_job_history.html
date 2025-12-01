@@ -1,0 +1,195 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Completed Print Jobs - QPrint{% endblock %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/student_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'qprint/css/print_job_history.css' %}">
+{% endblock %}
+
+{% block main_content %}
+<div class="container">
+    <h1>Completed Print Job Archive</h1>
+
+    <div class="completed-jobs-grid">
+
+        <div class="card history-card history-card-list">
+            <div class="history-header">
+                <h2>Completed Jobs</h2>
+                <div class="history-count">
+                    {% if completed_jobs %}{{ completed_jobs|length }} job{{ completed_jobs|length|pluralize }}{% endif %}
+                </div>
+            </div>
+
+            {% if completed_jobs %}
+            <div class="history-list">
+                {% for job in completed_jobs %}
+                <div class="history-item" onclick="showJobDetails('{{ job.id }}')">
+                    <div class="history-content">
+                        <div class="history-main">
+                            <strong>{{ job.file_name }}</strong>
+                            <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
+                        </div>
+                        <span class="status-badge status-{{ job.status|lower|slugify }}">{{ job.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-history"><p class="muted">No completed jobs yet.</p></div>
+            {% endif %}
+        </div>
+
+        <div class="card job-details-card" id="jobDetailsCard">
+            <h2>Print Job Details</h2>
+            <div id="detailsPlaceholder">
+                <p class="muted">Click on a job on the left to view its detailed receipt and breakdown.</p>
+            </div>
+
+            <div id="jobDetailsContent" style="display: none;">
+                </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const PRICING_CONFIG = {
+        'paper_type': { 'standard': 0.00, 'colored': 5.00, 'glossy': 10.00 },
+        'paper_size': { 'A4': 0.00, 'Letter': 0.00, 'Long': 1.00 },
+        'color_option': { 'bw': 1.00, 'color': 2.00 }
+    };
+    const typeLabels = {'standard': 'Standard', 'colored': 'Colored', 'glossy': 'Glossy'};
+    const colorLabels = {'bw': 'Black & White', 'color': 'Color'};
+
+    function calculateBreakdown(job) {
+        const pType = job.paper_type || 'standard';
+        const pSize = job.paper_size || 'A4';
+        const cOpt = job.color_option || 'bw';
+
+        const costPt = PRICING_CONFIG.paper_type[pType] || 0.0;
+        const costPs = PRICING_CONFIG.paper_size[pSize] || 0.0;
+        const costCo = PRICING_CONFIG.color_option[cOpt] || 0.0;
+        const pages = job.pages || 0;
+
+        const unitPrice = costPt + costPs + costCo;
+        const total = (unitPrice * pages).toFixed(2);
+
+        return {
+            unitPrice,
+            total,
+            costPt, costPs, costCo,
+            formula: `(${costPt} + ${costPs} + ${costCo}) × ${pages}`
+        };
+    }
+
+    function showJobDetails(jobId) {
+        document.getElementById('detailsPlaceholder').style.display = 'none';
+        const contentDiv = document.getElementById('jobDetailsContent');
+        contentDiv.style.display = 'block';
+        contentDiv.innerHTML = '<p class="muted" style="text-align:center;">Loading details...</p>';
+
+        fetch(`/api/job/${jobId}/`)
+            .then(r => r.json())
+            .then(job => {
+                const breakdown = calculateBreakdown(job);
+                const paymentStatusClass = `badge status-${job.payment_status.toLowerCase().replace(/\s+/g, '-')}`;
+                const jobStatusClass = `badge status-${job.status.toLowerCase().replace(/\s+/g, '-')}`;
+
+                contentDiv.innerHTML = `
+                    <div class="modal-details">
+                        <div class="detail-section">
+                            <div class="detail-row">
+                                <span class="detail-label">File:</span>
+                                <span class="detail-value">${job.file_name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Job Status:</span>
+                                <span class="detail-value"><span class="${jobStatusClass}">${job.status}</span></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Invoice #:</span>
+                                <span class="detail-value">${job.invoice_number}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3 class="section-title">Print Specifications</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Pages:</span>
+                                <span class="detail-value">${job.pages}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Paper Type:</span>
+                                <span class="detail-value">${typeLabels[job.paper_type]}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Paper Size:</span>
+                                <span class="detail-value">${job.paper_size}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Color Option:</span>
+                                <span class="detail-value">${colorLabels[job.color_option]}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Submitted At:</span>
+                                <span class="detail-value">${new Date(job.submitted_at).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3 class="section-title">Pricing Breakdown (per page)</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Base Cost (Unit Price):</span>
+                                <span class="detail-value">₱${breakdown.unitPrice.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-row" style="font-size:0.9em; color:#6b7280;">
+                                <span>Formula:</span>
+                                <span>${breakdown.formula}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3 class="section-title">Payment Summary</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Payment Status:</span>
+                                <span class="detail-value"><span class="${paymentStatusClass}">${job.payment_status}</span></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Invoice Paid:</span>
+                                <span class="detail-value">${job.is_paid ? 'Yes ✅' : 'No ❌'}</span>
+                            </div>
+                            ${job.payment_proof_url ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Proof:</span>
+                                <span class="detail-value"><a href="${job.payment_proof_url}" target="_blank">View Proof</a></span>
+                            </div>` : ''}
+                        </div>
+
+                        <div class="total-section" style="text-align:right; margin-top:20px;">
+                            <strong style="font-size:1.1rem;">Total Cost:</strong>
+                            <span class="total-amount">₱${breakdown.total}</span>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                contentDiv.innerHTML = '<p class="error-message">Could not load job details. API error.</p>';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const firstJobElement = document.querySelector('.history-list .history-item');
+        if (firstJobElement) {
+            const onclickValue = firstJobElement.getAttribute('onclick');
+            const jobIdMatch = onclickValue.match(/'([^']+)'/);
+            if (jobIdMatch && jobIdMatch[1]) {
+                showJobDetails(jobIdMatch[1]);
+            }
+        }
+    });
+</script>
+{% endblock %}

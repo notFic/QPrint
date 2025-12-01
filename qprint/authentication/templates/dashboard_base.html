@@ -6,15 +6,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{% block title %}Q-Print Dashboard{% endblock %}</title>
 
-  <!-- Shared stylesheet -->
   <link rel="stylesheet" href="{% static 'qprint/css/dashboard_base.css' %}">
 
-  <!-- Child-specific stylesheet (student_dashboard.css, staff_dashboard.css, …) -->
   {% block stylesheet %}{% endblock %}
 </head>
 <body>
 
-  <!-- HEADER -->
   <div class="header-bar" role="banner">
     <img src="{% static 'qprint/images/header.jpg' %}" alt="" aria-hidden="true" class="header-background">
     <button class="menu-btn" aria-label="Toggle sidebar" aria-controls="sidebar">
@@ -29,7 +26,6 @@
     <div class="header-title">Q-Print</div>
   </div>
 
-  <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar" role="complementary" aria-label="Sidebar navigation">
     <div class="sidebar-header">
       <h2>Menu</h2>
@@ -44,10 +40,11 @@
 
     <div class="sidebar-content">
       {% block sidebar_links %}
-      <a href="#profile">Profile</a>
-      <a href="#settings">Settings</a>
-      <a href="#support">Support</a>
-      <a href="#terms">Terms</a>
+        <a href="{% url 'student_dashboard' %}">Dashboard</a>
+        <a href="{% url 'print_job_history' %}">Print Job History</a>
+        <a href="{% url 'invoice_list' %}">Invoices</a>
+        <a href="#support">Support</a>
+        <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
       {% endblock %}
 
       <button type="button" class="logout-link" id="logout-btn">Log Out</button>
@@ -56,7 +53,6 @@
 
   <div class="backdrop" id="backdrop" aria-hidden="true"></div>
 
-  <!-- LOGOUT MODAL -->
   <div class="logout-modal" id="logout-modal">
     <div class="modal-box">
       <h2>Confirm Log Out</h2>
@@ -68,31 +64,55 @@
     </div>
   </div>
 
-  <!-- MAIN CONTENT -->
+  <div id="termsModal" class="modal">
+      <div class="modal-content">
+          <span id="closeTerms" class="close" onclick="closeTermsModal()">&times;</span>
+          <h2>Terms and Conditions</h2>
+          <div class="modal-body">
+              <p>Welcome to QPrint! By using this service, you agree to the following terms:</p>
+              <ul>
+                  <li>Your uploaded files will only be used for printing purposes.</li>
+                  <li>Please ensure you have the rights to any file you upload.</li>
+                  <li>QPrint is not responsible for lost or corrupted files once printed.</li>
+                  <li>Misuse of the platform may result in account suspension.</li>
+              </ul>
+          <p><br>By using the platform, you acknowledge that you’ve read and agree to these conditions.</p>
+          </div>
+      </div>
+  </div>
+
   <div class="container" role="main">
     {% block main_content %}{% endblock %}
   </div>
 
-  <!-- SHARED JS (sidebar + logout modal) -->
   <script>
-    // Sidebar toggle
-    (function(){
-      const menuBtn = document.querySelector('.menu-btn');
-      const sidebar   = document.getElementById('sidebar');
-      const closeBtn  = document.querySelector('.close-btn');
-      const backdrop  = document.getElementById('backdrop');
+    // 1. Sidebar Logic
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('backdrop');
 
-      function toggleSidebar() {
-        sidebar.classList.toggle('open');
-        backdrop.classList.toggle('active');
-      }
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      backdrop.classList.toggle('active');
+    }
 
-      menuBtn.addEventListener('click', toggleSidebar);
-      closeBtn.addEventListener('click', toggleSidebar);
-      backdrop.addEventListener('click', toggleSidebar);
-    })();
+    document.querySelector('.menu-btn').addEventListener('click', toggleSidebar);
+    document.querySelector('.close-btn').addEventListener('click', toggleSidebar);
+    backdrop.addEventListener('click', toggleSidebar);
 
-    // Logout modal
+    // 2. Terms Modal Logic (Global)
+    function openTermsModal() {
+        // Close sidebar first if open
+        if (sidebar.classList.contains('open')) {
+            toggleSidebar();
+        }
+        document.getElementById("termsModal").style.display = "flex";
+    }
+
+    function closeTermsModal() {
+        document.getElementById("termsModal").style.display = "none";
+    }
+
+    // 3. Logout Modal Logic
     (function(){
       const logoutBtn   = document.getElementById('logout-btn');
       const logoutModal = document.getElementById('logout-modal');
@@ -106,6 +126,15 @@
         });
       }
     })();
+
+    // 4. Global Window Click (Handles closing modals when clicking outside)
+    window.addEventListener('click', (e) => {
+        const termsModal = document.getElementById('termsModal');
+        if (e.target === termsModal) {
+            closeTermsModal();
+        }
+        // Logout modal already has its own specific listener above
+    });
   </script>
 
   {% block extra_js %}{% endblock %}

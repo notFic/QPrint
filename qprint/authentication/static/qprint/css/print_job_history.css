@@ -1,0 +1,98 @@
+/* ==================================================
+   PRINT JOB HISTORY STYLES
+   ================================================== */
+
+/* Layout Grid: 1fr (List) to 1fr (Details) */
+/* Changed to equal width (1fr 1fr) to give History List more space */
+.completed-jobs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+}
+
+/* --- Left Column: History List Tweaks --- */
+.history-card-list {
+    max-height: calc(100vh - 150px); /* Fill most of the viewport */
+    overflow-y: auto;
+}
+
+.history-list {
+    /* Override dashboard default max-height so it fills the card */
+    max-height: none;
+}
+
+/* Ensure the cursor indicates interactivity */
+.history-item {
+    cursor: pointer;
+}
+
+/* --- Right Column: Details Card Styling --- */
+
+/* Reset padding from generic modal styles */
+.job-details-card .modal-details {
+    padding: 0;
+    margin-top: 10px;
+}
+
+/* Sections divider */
+.job-details-card .detail-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.job-details-card .detail-section:last-child {
+    border-bottom: none;
+}
+
+/* Row Layout */
+.job-details-card .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* FIX: Aligns label to top if value wraps */
+    margin-bottom: 10px;     /* Increased spacing slightly */
+}
+
+/* Typography & Value Handling */
+.job-details-card strong {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.job-details-card .detail-label {
+    white-space: nowrap;     /* Prevents label from squishing */
+    margin-right: 15px;
+    padding-top: 2px;        /* Visual alignment with text */
+}
+
+.job-details-card .detail-value {
+    text-align: right;
+    max-width: 70%;          /* Prevents value from overlapping label */
+    word-break: break-word;  /* Forces long filenames to wrap nicely */
+    line-height: 1.4;
+}
+
+.job-details-card .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+.job-details-card .total-cost {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #15803d;
+}
+
+/* Responsive adjustment */
+@media (max-width: 900px) {
+    .completed-jobs-grid {
+        grid-template-columns: 1fr; /* Stack columns on smaller screens */
+    }
+
+    .history-card-list {
+        max-height: 400px;
+    }
+}

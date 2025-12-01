@@ -18,6 +18,7 @@ body {
   line-height: 1.5;
 }
 
+/* --- HEADER & SIDEBAR (Existing) --- */
 .header-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -31,18 +32,12 @@ body {
 }
 
 .header-background {
-  position: absolute;
-  top: 0; left: 0;
+  position: absolute; top: 0; left: 0;
   width: 100%; height: 100%;
-  object-fit: cover;
-  opacity: 0.2;
-  z-index: -1;
+  object-fit: cover; opacity: 0.2; z-index: -1;
 }
 
-.header-logo {
-  height: 36px;
-  margin-right: 12px;
-}
+.header-logo { height: 36px; margin-right: 12px; }
 
 .menu-btn {
   background: none; border: none; cursor: pointer;
@@ -52,11 +47,7 @@ body {
 }
 .menu-btn svg { width: 24px; height: 24px; stroke: currentColor; }
 
-.header-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-}
+.header-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
 
 .sidebar {
   position: fixed; top: 0; left: -300px;
@@ -97,11 +88,7 @@ body {
 .sidebar-content a:hover,
 .sidebar-content button:hover { background: #f3f4f6; }
 
-.logout-link {
-  margin-top: auto;
-  color: var(--danger);
-  font-weight: 600;
-}
+.logout-link { margin-top: auto; color: var(--danger); font-weight: 600; }
 .logout-link:hover { background: #fee2e2; }
 
 .backdrop {
@@ -112,6 +99,47 @@ body {
 }
 .backdrop.active { display: block; }
 
+.container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+/* --- GLOBAL MODAL STYLES (Moved from student_dashboard.css) --- */
+.modal {
+  display: none; position: fixed; z-index: 2000; left: 0; top: 0;
+  width: 100%; height: 100%; background: rgba(0,0,0,0.6);
+  justify-content: center; align-items: center;
+}
+
+/* Terms Modal Specifics */
+#termsModal .modal-content {
+    background: white;
+    padding: 1.8rem 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+}
+
+#termsModal .modal-content h2 {
+    color: #1f2937;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+#termsModal .modal-body {
+    color: #4b5563;
+    line-height: 1.6;
+    text-align: left;
+}
+
+#termsModal .close {
+    position: absolute; top: 12px; right: 16px;
+    font-size: 1.4rem; cursor: pointer; color: #6b7280;
+}
+#termsModal .close:hover { color: #ef4444; }
+
+/* Logout Modal (Existing) */
 .logout-modal {
   position: fixed; top: 0; left: 0;
   width: 100%; height: 100%;
@@ -131,23 +159,17 @@ body {
 .modal-box h2 { font-size: 1.5rem; margin-bottom: 8px; }
 .modal-box p { color: var(--muted); margin-bottom: 20px; }
 
-.modal-actions {
-  display: flex; gap: 12px;
-}
+.modal-actions { display: flex; gap: 12px; }
 .modal-btn {
   flex: 1; padding: 10px;
-  border-radius: 8px; border: none;
-  font-weight: 600; cursor: pointer;
+  border-radius: 8px; border: none; font-weight: 600; cursor: pointer;
 }
 .cancel-btn { background: #e5e7eb; color: #374151; }
 .cancel-btn:hover { background: #d1d5db; }
 .confirm-btn { background: var(--danger); color: white; }
 .confirm-btn:hover { background: #dc2626; }
 
-.container {
-  max-width: 1400px; margin: 0 auto; padding: 32px 24px;
-}
-
+/* --- MESSAGES & BADGES --- */
 .messages { margin-bottom: 16px; }
 .error-message {
   background: #fef2f2; color: #991b1b;
@@ -156,57 +178,16 @@ body {
 }
 
 h1 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 24px 0;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 1.875rem; font-weight: 700; color: #0f172a;
+  margin: 0 0 24px 0; line-height: 1.2;
 }
 
-/* badges */
 .badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
+  display: inline-block; padding: 4px 10px;
+  border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;
 }
-
-/* print job status */
-.badge-pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-.badge-ready {
-  background: #dcfce7;
-  color: #166534;
-}
-.badge-cancelled {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-/* payment status */
-.badge-unpaid {
-  background: #fee2e2;
-  color: #991b1b;
-}
-.badge-paid {
-  background: #dbeafe;
-  color: #1e3a8a;
-}
-.badge-pending-review {
-  background: #fef3c7;
-  color: #92400e;
-}
-.badge-rejected {
-  background: #ffe4e6;
-  color: #be123c;
-}
-.badge-accepted {
-  background: #d1fae5;
-  color: #065f46;
-}
+.badge-pending, .badge-pending-review { background: #fef3c7; color: #92400e; }
+.badge-ready, .badge-accepted { background: #dcfce7; color: #166534; }
+.badge-cancelled { background: #f3f4f6; color: #6b7280; }
+.badge-unpaid, .badge-rejected { background: #fee2e2; color: #991b1b; }
+.badge-paid { background: #dbeafe; color: #1e3a8a; }

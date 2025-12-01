@@ -187,6 +187,7 @@
 }
 .big { font-size: 1.2rem; padding: 8px 16px; }
 
+/* --- MODAL BASE STYLES --- */
 .modal {
   display: none; position: fixed; z-index: 1000; left: 0; top: 0;
   width: 100%; height: 100%; background: rgba(0,0,0,0.6);
@@ -327,4 +328,57 @@
   border-left-color: #dc2626;
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+/* --- TERMS MODAL STYLES (Copied from register.css) --- */
+#termsModal .modal-content {
+    background: white;
+    padding: 1.8rem 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+}
+
+#termsModal .modal-content h2 {
+    color: #1f2937;
+    margin-bottom: 1rem;
+    font-size: 1.5rem; /* Ensure consistent heading size */
+}
+
+#termsModal .modal-body {
+    color: #4b5563;
+    line-height: 1.6;
+    text-align: left;
+}
+
+#termsModal .close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+#termsModal .close:hover {
+    color: #b91c1c;
+}
+
+.history-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Ensures it fills the grid cell */
+  min-height: 400px; /* Optional: gives it a steady look */
+}
+
+/* Ensure the list takes up available space but scrolls if too big */
+.history-list {
+  flex: 1; /* Pushes the footer button down */
+  overflow-y: auto;
+  max-height: 340px; /* Keep your existing scroll limit */
+  margin-bottom: 16px;
 }

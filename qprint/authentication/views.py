@@ -491,8 +491,10 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
+        .neq('status', 'Completed') \
         .order('submitted_at', desc=True) \
         .execute()
+
     jobs = jobs_resp.data or []
 
     # Invoice Stats
@@ -914,3 +916,20 @@ def update_overdue_invoices(user_id=None):
 
     query.execute()
 
+@login_required
+def print_job_history(request):
+    """View for the separated Print Job History page (Completed jobs only)"""
+
+    # Fetch only Completed jobs for the current user
+    jobs_resp = supabase.table('print_jobs') \
+        .select('*') \
+        .eq('user_id', request.user.id) \
+        .eq('status', 'Completed') \
+        .order('submitted_at', desc=True) \
+        .execute()
+
+    completed_jobs = jobs_resp.data or []
+
+    return render(request, 'subtemplates/print_job_history.html', {
+        'completed_jobs': completed_jobs
+    })
