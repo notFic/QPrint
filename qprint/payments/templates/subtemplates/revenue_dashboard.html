@@ -8,9 +8,15 @@
 {% endblock %}
 
 {% block sidebar_links %}
-<a href="{% url 'staff_dashboard' %}">Print Job Queue</a>
-<a href="{% url 'revenue_dashboard' %}" class="active">Revenue Reports</a>
-<a href="#settings">Settings</a>
+<a href="{% url 'staff_dashboard' %}" class="active">Print Job Queue</a>
+
+<a href="{% url 'staff_job_history' %}">History Archive</a>
+
+<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
+
+<!--<a href="#settings">Settings</a>-->
+
+<a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
 
 {% block main_content %}

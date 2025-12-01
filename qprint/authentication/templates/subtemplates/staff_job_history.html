@@ -1,0 +1,152 @@
+{% extends "dashboard_base.html" %}
+{% load static %}
+
+{% block title %}Staff - Print History Archive{% endblock %}
+
+{% block stylesheet %}
+<link rel="stylesheet" href="{% static 'qprint/css/staff_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'qprint/css/staff_job_history.css' %}">
+{% endblock %}
+
+{% block sidebar_links %}
+<a href="{% url 'staff_dashboard' %}">Print Job Queue</a>
+<a href="{% url 'staff_job_history' %}" class="active">History Archive</a>
+<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
+<a href="#" onclick="openTermsModal()">Terms and Conditions</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="container">
+    <h1>Global Print Job Archive</h1>
+
+    <div class="completed-jobs-grid">
+
+        <div class="card history-card history-card-list">
+            <div class="history-header">
+                <h2>All Completed Jobs</h2>
+                <div class="history-count">
+                    {% if completed_jobs %}{{ completed_jobs|length }} records{% endif %}
+                </div>
+            </div>
+
+            {% if completed_jobs %}
+            <div class="history-list">
+                {% for job in completed_jobs %}
+                <div class="history-item" onclick="showStaffJobDetails('{{ job.id }}')">
+                    <div class="history-content">
+                        <div class="history-main">
+                            <strong>{{ job.file_name }}</strong>
+                            <div class="history-meta">
+                                <span class="meta-user">{{ job.username }}</span>
+                                <span> • {{ job.submitted_at|date:"M d, H:i" }}</span>
+                            </div>
+                        </div>
+                        <span class="badge badge-completed">COMPLETED</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-history"><p class="muted">No archive records found.</p></div>
+            {% endif %}
+        </div>
+
+        <div class="card job-details-card" id="jobDetailsCard">
+            <h2>Job Audit Details</h2>
+            <div id="detailsPlaceholder">
+                <p class="muted">Select a record to view user details and file info.</p>
+            </div>
+
+            <div id="jobDetailsContent" style="display: none;">
+                </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showStaffJobDetails(jobId) {
+        document.getElementById('detailsPlaceholder').style.display = 'none';
+        const contentDiv = document.getElementById('jobDetailsContent');
+        contentDiv.style.display = 'block';
+        contentDiv.innerHTML = '<p class="muted" style="text-align:center;">Retrieving record...</p>';
+
+        // Get CSRF Token for the form injection
+        const csrfToken = '{{ csrf_token }}';
+
+        fetch(`/api/job/${jobId}/`)
+            .then(r => r.json())
+            .then(job => {
+                const dateStr = new Date(job.submitted_at).toLocaleString('en-US', {
+                    month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                contentDiv.innerHTML = `
+                    <div class="modal-details">
+
+                        <div class="admin-header">
+                            <div class="invoice-label">INVOICE: ${job.invoice_number}</div>
+                            <strong class="file-title">${job.file_name}</strong>
+                            <div class="user-badge">
+                                👤 Submitted by: ${job.username}
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 20px; text-align: center;">
+                            <form method="POST" action="{% url 'staff_complete_job' %}">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                                <input type="hidden" name="job_id" value="${job.id}">
+                                <button name="action" value="unmark_completed" class="btn-secondary btn-small" style="width:100%; padding:10px; border-color:#cbd5e1; cursor:pointer;">
+                                    ↩ Undo Completion (Move back to Queue)
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="download-zone">
+                            <p class="download-label">Need to reprint?</p>
+                            <a href="${job.file_url}" target="_blank" class="btn-primary btn-small download-btn">
+                                ⬇ Download Original File
+                            </a>
+                        </div>
+
+                        <div class="info-grid">
+
+                            <div class="detail-section">
+                                <h3 class="section-title">Specifications</h3>
+                                <div class="detail-row"><span class="detail-label">Pages:</span> <span class="detail-value">${job.pages}</span></div>
+                                <div class="detail-row"><span class="detail-label">Size:</span> <span class="detail-value">${job.paper_size}</span></div>
+                                <div class="detail-row"><span class="detail-label">Type:</span> <span class="detail-value">${job.paper_type}</span></div>
+                                <div class="detail-row"><span class="detail-label">Color:</span> <span class="detail-value">${job.color_option}</span></div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h3 class="section-title">Financials</h3>
+                                <div class="detail-row"><span class="detail-label">Status:</span> <span class="badge badge-accepted">Paid</span></div>
+                                <div class="detail-row"><span class="detail-label">Total:</span> <span class="total-cost">₱${job.total_cost}</span></div>
+                                <div class="detail-row"><span class="detail-label">Date:</span> <span class="detail-value date-value">${dateStr}</span></div>
+                                ${job.payment_proof_url ? `<div class="proof-row"><a href="${job.payment_proof_url}" target="_blank" class="proof-link">View Proof Image</a></div>` : ''}
+                            </div>
+                        </div>
+
+                    </div>
+                `;
+            })
+            .catch(error => {
+                contentDiv.innerHTML = '<p class="error-message">Error loading record. Please try again.</p>';
+                console.error(error);
+            });
+    }
+
+    // Auto-load first item if available
+    document.addEventListener('DOMContentLoaded', () => {
+        const firstJob = document.querySelector('.history-item');
+        if (firstJob) {
+            const onclickVal = firstJob.getAttribute('onclick');
+            const match = onclickVal.match(/'([^']+)'/);
+            if (match) showStaffJobDetails(match[1]);
+        }
+    });
+</script>
+{% endblock %}

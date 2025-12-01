@@ -8,9 +8,15 @@
 {% endblock %}
 
 {% block sidebar_links %}
-<a href="#jobs">Print Job Queue</a>
-<a href="{% url 'revenue_dashboard' %}">Reports</a>
-<a href="#settings">Settings</a>
+<a href="{% url 'staff_dashboard' %}" class="active">Print Job Queue</a>
+
+<a href="{% url 'staff_job_history' %}">History Archive</a>
+
+<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
+
+<!--<a href="#settings">Settings</a>-->
+
+<a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
 
 {% block main_content %}
@@ -156,7 +162,7 @@
                         <input type="hidden" name="job_id" value="{{ job.id }}">
                         <button class="btn-primary btn-small" style="width: 100%;"
                             {% if job.payment_status != "Accepted" or job.status == "Ready" or job.status == "Completed" %}disabled{% endif %}>
-                            Notify User
+                            🔔 Notify User
                         </button>
                     </form>
                 </td>

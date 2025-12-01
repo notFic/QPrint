@@ -19,7 +19,7 @@ urlpatterns = [
     path('student/delete-job/', views.student_delete_job, name='student_delete_job'),
     path('staff-complete-job/', views.staff_complete_job, name='staff_complete_job'),
     path('history/', views.print_job_history, name='print_job_history'),
-
+    path('staff/history/', views.staff_job_history, name='staff_job_history'),
 
     # Invoice URLs
     path("invoices/", views.invoice_list, name="invoice_list"),

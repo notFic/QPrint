@@ -352,6 +352,7 @@ def staff_dashboard(request):
 
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
+        .neq('status', 'Completed') \
         .order('submitted_at', desc=True) \
         .execute()
 
@@ -865,42 +866,33 @@ def check_print_eligibility(job):
 
 @login_required
 def staff_complete_job(request):
-    """Allows staff to mark a job as completed (picked up)."""
+    """Allows staff to mark a job as completed or undo it."""
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
         action = request.POST.get("action")
 
-        job_resp = supabase.table("print_jobs") \
-            .select("status, is_paid") \
-            .eq("id", job_id) \
-            .execute()
-
+        # ... (Fetching job logic remains same) ...
+        job_resp = supabase.table("print_jobs").select("status").eq("id", job_id).execute()
         if not job_resp.data:
             messages.error(request, "Job not found.")
             return redirect("staff_dashboard")
 
         job = job_resp.data[0]
 
-        # Ensure job is Ready or Completed before proceeding
-        if job["status"] not in ["Ready", "Completed"]:
-            messages.error(request, "Job must be 'Ready' or already 'Completed' to change status.")
-            return redirect("staff_dashboard")
-
-        # Toggle completion status
+        # Logic Update
         if action == "mark_completed":
             new_status = "Completed"
         elif action == "unmark_completed":
-            # If unmarking, revert to 'Ready'
             new_status = "Ready"
         else:
-            messages.error(request, "Invalid action.")
             return redirect("staff_dashboard")
 
-        supabase.table("print_jobs").update({
-            "status": new_status
-        }).eq("id", job_id).execute()
+        supabase.table("print_jobs").update({"status": new_status}).eq("id", job_id).execute()
 
-        return redirect("staff_dashboard")
+        # SUCCESS: Redirect back to where the user clicked the button
+        return redirect(request.META.get('HTTP_REFERER', 'staff_dashboard'))
+
+    return redirect("staff_dashboard")
 
 def update_overdue_invoices(user_id=None):
     """Mark invoices as overdue if past deadline"""
@@ -931,5 +923,25 @@ def print_job_history(request):
     completed_jobs = jobs_resp.data or []
 
     return render(request, 'subtemplates/print_job_history.html', {
+        'completed_jobs': completed_jobs
+    })
+
+
+@login_required
+def staff_job_history(request):
+    """View for Staff to see global print history"""
+    if not request.user.is_staff:
+        return redirect('student_dashboard')
+
+    # Fetch ALL Completed jobs (Global History)
+    jobs_resp = supabase.table('print_jobs') \
+        .select('*') \
+        .eq('status', 'Completed') \
+        .order('submitted_at', desc=True) \
+        .execute()
+
+    completed_jobs = jobs_resp.data or []
+
+    return render(request, 'subtemplates/staff_job_history.html', {
         'completed_jobs': completed_jobs
     })

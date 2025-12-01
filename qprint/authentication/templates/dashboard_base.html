@@ -41,9 +41,9 @@
     <div class="sidebar-content">
       {% block sidebar_links %}
         <a href="{% url 'student_dashboard' %}">Dashboard</a>
-        <a href="{% url 'print_job_history' %}">Print Job History</a>
-        <a href="{% url 'invoice_list' %}">Invoices</a>
-        <a href="#support">Support</a>
+        <a href="{% url 'print_job_history' %}">History Archives</a>
+        <a href="{% url 'invoice_list' %}">Job Invoices</a>
+<!--        <a href="#support">Support</a>-->
         <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
       {% endblock %}
 
@@ -80,6 +80,22 @@
           </div>
       </div>
   </div>
+
+  {% if messages %}
+      <div class="toast-container">
+          {% for message in messages %}
+          <div class="toast {{ message.tags }}">
+              <div class="toast-icon">
+                  {% if message.tags == 'success' %}✓
+                  {% elif message.tags == 'error' %}✕
+                  {% elif message.tags == 'warning' %}⚠
+                  {% else %}ℹ{% endif %}
+              </div>
+              <div class="toast-message">{{ message }}</div>
+          </div>
+          {% endfor %}
+      </div>
+  {% endif %}
 
   <div class="container" role="main">
     {% block main_content %}{% endblock %}
@@ -134,6 +150,16 @@
             closeTermsModal();
         }
         // Logout modal already has its own specific listener above
+    });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const toasts = document.querySelectorAll('.toast');
+        toasts.forEach(toast => {
+            // Remove the element after 4.5 seconds (matches CSS animation)
+            setTimeout(() => {
+                toast.remove();
+            }, 30500);
+        });
     });
   </script>
 
