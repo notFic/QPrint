@@ -15,7 +15,7 @@ def revenue_dashboard(request):
 
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
-        .in_('status', ['Ready', 'Paid']) \
+        .in_('status', ['Completed']) \
         .execute()
 
     jobs = jobs_resp.data or []
