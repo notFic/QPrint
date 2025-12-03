@@ -1,0 +1,223 @@
+/* ==================================================
+   STAFF JOB HISTORY STYLES
+   ================================================== */
+
+/* Layout Grid: 1fr (List) to 1fr (Details) */
+.completed-jobs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+}
+
+/* --- Left Column: History List Styling --- */
+.history-card-list {
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+}
+
+/* Missing styles that caused the "untidy" look */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Gap handled by padding/border */
+}
+
+.history-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-item:hover {
+    background: #f8fafc;
+}
+
+/* Flex container to align Text (Left) and Badge (Right) */
+.history-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.history-main {
+    flex: 1; /* Takes up remaining space */
+    padding-right: 16px; /* Space between text and badge */
+    min-width: 0; /* Allows text truncation if needed */
+}
+
+.history-main strong {
+    display: block;
+    color: #0f172a;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+/* Badge positioning */
+.history-content .badge {
+    flex-shrink: 0; /* Prevents badge from squishing */
+}
+
+/* Metadata Text */
+.history-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.meta-user {
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+/* --- Right Column: Details Card Styling --- */
+
+/* Admin Header Box */
+.admin-header {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+}
+
+.invoice-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.file-title {
+    font-size: 1.15rem;
+    display: block;
+    margin-bottom: 10px;
+    color: #0f172a;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* User Identity Badge */
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #e0f2fe;
+    color: #0284c7;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Download Area */
+.download-zone {
+    text-align: center;
+    margin: 24px 0;
+    padding: 20px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.download-label {
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.download-btn {
+    text-decoration: none;
+    padding: 10px 20px;
+    font-size: 0.95rem;
+}
+
+/* Info Grid (Specs & Financials) */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px; /* Increased gap for better separation */
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    border: none;
+    margin: 0;
+}
+
+.section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 6px;
+}
+
+/* Row Layouts */
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.detail-label {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: #0f172a;
+    font-weight: 600;
+    text-align: right;
+}
+
+.total-cost {
+    color: #15803d;
+    font-weight: 800;
+    font-size: 1rem;
+}
+
+.date-value {
+    font-size: 0.85rem;
+}
+
+.proof-row {
+    margin-top: 12px;
+    text-align: right;
+}
+
+.proof-link {
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: #3b82f6;
+    font-weight: 600;
+}
+.proof-link:hover {
+    text-decoration: underline;
+}
+
+/* Responsive adjustment */
+@media (max-width: 900px) {
+    .completed-jobs-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .history-card-list {
+        max-height: 400px;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}

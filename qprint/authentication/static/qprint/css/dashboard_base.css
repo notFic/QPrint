@@ -112,6 +112,7 @@ body {
 }
 .backdrop.active { display: block; }
 
+/* Logout Modal Specifics */
 .logout-modal {
   position: fixed; top: 0; left: 0;
   width: 100%; height: 100%;
@@ -165,7 +166,7 @@ h1 {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* badges */
+/* BADGES (Shared) */
 .badge {
   display: inline-block;
   padding: 4px 10px;
@@ -174,39 +175,101 @@ h1 {
   font-weight: 600;
   white-space: nowrap;
 }
+.badge-pending { background: #fef3c7; color: #92400e; }
+.badge-ready { background: #dcfce7; color: #166534; }
+.badge-cancelled { background: #f3f4f6; color: #6b7280; }
+.badge-unpaid { background: #fee2e2; color: #991b1b; }
+.badge-paid { background: #dbeafe; color: #1e3a8a; }
+.badge-pending-review { background: #fef3c7; color: #92400e; }
+.badge-rejected { background: #ffe4e6; color: #be123c; }
+.badge-accepted { background: #d1fae5; color: #065f46; }
 
-/* print job status */
-.badge-pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-.badge-ready {
-  background: #dcfce7;
-  color: #166534;
-}
-.badge-cancelled {
-  background: #f3f4f6;
-  color: #6b7280;
+/* --- TOAST NOTIFICATIONS --- */
+.toast-container {
+    position: fixed; top: 80px; right: 20px; z-index: 9999;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: none;
 }
 
-/* payment status */
-.badge-unpaid {
-  background: #fee2e2;
-  color: #991b1b;
+.toast {
+    background: white; padding: 16px 20px; border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex; align-items: center; gap: 12px;
+    min-width: 300px; pointer-events: auto; border-left: 5px solid #ccc;
+    opacity: 0; transform: translateX(100%);
+    animation: slideIn 0.3s forwards, fadeOut 0.5s 4s forwards;
 }
-.badge-paid {
-  background: #dbeafe;
-  color: #1e3a8a;
+
+.toast.success { border-left-color: #16a34a; }
+.toast.success .toast-icon { color: #16a34a; }
+.toast.error { border-left-color: #dc2626; }
+.toast.error .toast-icon { color: #dc2626; }
+.toast.warning { border-left-color: #ca8a04; }
+.toast.warning .toast-icon { color: #ca8a04; }
+
+.toast-message { color: #1f2937; font-weight: 500; }
+
+@keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-20px); } }
+
+/* --- GLOBAL MODAL STYLES (Added to fix Revenue/Staff Dashboards) --- */
+.modal {
+  display: none; /* Crucial: Hidden by default */
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
 }
-.badge-pending-review {
-  background: #fef3c7;
-  color: #92400e;
+
+.modal-content {
+  background: white;
+  margin: 5% auto;
+  padding: 24px;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 12px;
+  position: relative;
+  text-align: left;
 }
-.badge-rejected {
-  background: #ffe4e6;
-  color: #be123c;
+
+#termsModal .modal-content {
+    background: white;
+    padding: 1.8rem 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
 }
-.badge-accepted {
-  background: #d1fae5;
-  color: #065f46;
+
+#termsModal .modal-content h2 {
+    color: #1f2937;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    text-align: left;
+}
+
+#termsModal .modal-body {
+    color: #4b5563;
+    line-height: 1.6;
+    text-align: left;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 28px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.close:hover {
+  color: #ef4444;
 }

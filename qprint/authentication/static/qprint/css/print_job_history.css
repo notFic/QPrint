@@ -1,0 +1,89 @@
+.completed-jobs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+}
+
+/* --- Left Column --- */
+.history-card-list {
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+}
+
+.history-list {
+    max-height: none;
+}
+
+/* Ensure the cursor indicates interactivity */
+.history-item {
+    cursor: pointer;
+}
+
+/* --- Right Column--- */
+
+/* Reset padding from generic modal styles */
+.job-details-card .modal-details {
+    padding: 0;
+    margin-top: 10px;
+}
+
+/* Sections divider */
+.job-details-card .detail-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.job-details-card .detail-section:last-child {
+    border-bottom: none;
+}
+
+/* Row Layout */
+.job-details-card .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.job-details-card strong {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.job-details-card .detail-label {
+    white-space: nowrap;
+    margin-right: 15px;
+    padding-top: 2px;
+}
+
+.job-details-card .detail-value {
+    text-align: right;
+    max-width: 70%;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.job-details-card .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+.job-details-card .total-cost {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #15803d;
+}
+
+@media (max-width: 900px) {
+    .completed-jobs-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .history-card-list {
+        max-height: 400px;
+    }
+}

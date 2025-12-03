@@ -2,8 +2,15 @@ import random
 import time
 from datetime import datetime, timedelta
 import secrets
+import os
+import uuid
+import base64
+import PyPDF2
+from io import BytesIO
+import pytz
+import time
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -16,61 +23,32 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse
 from django.views.decorators.cache import never_cache
-import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from io import BytesIO
-import uuid
-import base64
-import PyPDF2
-from io import BytesIO
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.conf import settings
 from django.utils import timezone
 
 supabase = settings.SUPABASE_CLIENT
 bucket = settings.SUPABASE_BUCKET
 
+MAX_PREVIEW_SIZE = 25 * 1024 * 1024  # 25 MB
 
-# Invoice System Functions
-def generate_invoice_number():
-    """Generate unique invoice number: INV-YYYYMMDD-XXXXX"""
-    date_part = datetime.now().strftime("%Y%m%d")
-    random_part = secrets.token_hex(3).upper()
-    return f"INV-{date_part}-{random_part}"
-
-
-def check_print_eligibility(job):
-    """Check if job can be printed"""
-    if job.get('is_paid') == False:
-        return False, "Invoice unpaid - please complete payment first"
-    elif job.get('status') == 'Pending Review':
-        return False, "Payment pending review"
-    elif job.get('status') == 'Cancelled':
-        return False, "Job was cancelled"
-    elif job.get('status') == 'Overdue':
-        return False, "Payment overdue - please contact support"
-    return True, "Eligible for printing"
-
-
-def update_overdue_invoices(user_id=None):
-    """Mark invoices as overdue if past deadline"""
-    now = timezone.now().isoformat()
-    query = supabase.table('print_jobs') \
-        .update({'status': 'Overdue'}) \
-        .eq('is_paid', False) \
-        .lt('due_date', now) \
-        .eq('status', 'Unpaid')
-
-    if user_id:
-        query = query.eq('user_id', user_id)
-
-    query.execute()
-
+PRICING_CONFIG = {
+    'paper_type': {
+        'standard': 0.00,
+        'colored': 5.00,
+        'glossy': 10.00
+    },
+    'paper_size': {
+        'A4': 0.00,
+        'Letter': 0.00,
+        'Long': 1.00
+    },
+    'color_option': {
+        'bw': 1.00,
+        'color': 2.00
+    }
+}
 
 def send_password_reset_email(request, email):
     try:
@@ -118,7 +96,6 @@ def _send_otp_email(email, otp):
         sg.send(message)
     except Exception as e:
         print(f"SendGrid error: {e}")
-
 
 def register(request):
     if request.method == "POST":
@@ -278,7 +255,6 @@ def verify(request):
 
     return render(request, "subtemplates/verify.html")
 
-
 def login(request):
     if request.method == "POST":
         username = request.POST["username"]
@@ -312,7 +288,7 @@ def login(request):
 
     return render(request, "subtemplates/login.html")
 
-
+@login_required
 def logout(request):
     if request.user.is_authenticated:
         try:
@@ -326,7 +302,10 @@ def logout(request):
             print(f"Supabase activity logging error: {e}")
 
         auth_logout(request)
-        messages.success(request, "You have been logged out successfully.")
+
+        storage = messages.get_messages(request)
+        storage.used = True
+
     else:
         messages.info(request, "You were not logged in.")
 
@@ -355,7 +334,7 @@ def reset_password(request, uidb64, token):
                 validate_password(new_password, user)
             except ValidationError as e:
                 messages.error(request, e.messages[0])
-                return render(request, 'subtemplates/reset_password_form.html', {'validlink': True})
+                return render(request, 'subtemplates/reset_password_form.html',{'validlink': True})
 
             user.set_password(new_password)
             user.save()
@@ -370,35 +349,130 @@ def staff_dashboard(request):
     if not request.user.is_staff:
         return redirect('student_dashboard')
 
-    # Update overdue invoices
     update_overdue_invoices()
 
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
+        .neq('status', 'Completed') \
         .order('submitted_at', desc=True) \
         .execute()
 
     jobs = jobs_resp.data or []
 
+    for job in jobs:
+        submitted_at_str = job.get('submitted_at')
+        if submitted_at_str:
+            try:
+                dt_obj = datetime.fromisoformat(submitted_at_str.replace('Z', ''))
+
+                job['submitted_at'] = timezone.make_aware(dt_obj)
+
+            except ValueError:
+                job['submitted_at'] = None
+
+    active_sorts = request.GET.getlist('sort')
+
+    if not active_sorts:
+        active_sorts = ['newest']
+
+    if 'oldest' in active_sorts:
+        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=False)
+    elif 'newest' in active_sorts:
+        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=True)
+    else:
+        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=True)
+
+    if 'user_az' in active_sorts:
+        jobs.sort(key=lambda x: x['username'].lower())
+
+    if 'largest_job' in active_sorts:
+        jobs.sort(key=lambda x: x['pages'], reverse=True)
+    if 'smallest_job' in active_sorts:
+        jobs.sort(key=lambda x: x['pages'])
+    if 'color_only' in active_sorts:
+        jobs.sort(key=lambda x: (x['color_option'] != 'color'))
+    if 'paper_glossy' in active_sorts:
+        jobs.sort(key=lambda x: (x.get('paper_type') != 'glossy'))
+
+    if 'unpaid' in active_sorts:
+        jobs.sort(key=lambda x: (x['status'] not in ['Unpaid', 'Overdue']))
+    if 'ready_print' in active_sorts:
+        jobs.sort(key=lambda x: (x['payment_status'] != 'Accepted'))
+    if 'pending_payment' in active_sorts:
+        jobs.sort(key=lambda x: (x['payment_status'] != 'Pending Review'))
+
+    sort_labels = {
+        'newest': 'Newest First', 'oldest': 'Oldest First',
+        'pending_payment': 'Pending Review', 'ready_print': 'Ready to Print',
+        'unpaid': 'Unpaid / Overdue', 'paper_glossy': 'Glossy Paper',
+        'color_only': 'Color Jobs', 'smallest_job': 'Smallest First',
+        'largest_job': 'Largest First', 'user_az': 'User A-Z'
+    }
+
+    active_filters = []
+    for sort_key in active_sorts:
+        if sort_key == 'newest' and len(active_sorts) == 1:
+            continue
+
+        if sort_key in sort_labels:
+            remaining_sorts = [s for s in active_sorts if s != sort_key]
+            if remaining_sorts:
+                query_string = "&".join([f"sort={s}" for s in remaining_sorts])
+                remove_url = f"?{query_string}"
+            else:
+                remove_url = request.path
+
+            active_filters.append({
+                'label': sort_labels[sort_key],
+                'remove_url': remove_url
+            })
+
     context = {
         'user': request.user,
         'print_jobs': jobs,
+        'current_sorts': active_sorts,
+        'active_filters': active_filters,
     }
 
     return render(request, 'subtemplates/staff_dashboard.html', context)
 
 
-MAX_PREVIEW_SIZE = 25 * 1024 * 1024
-PRICING = {
-    'bw': {'A4': 3.00, 'Letter': 4.00},
-    'color': {'A4': 5.00, 'Letter': 6.50}
-}
+@login_required
+def staff_delete_job(request):
+    if request.method == "POST" and request.user.is_staff:
+        job_id = request.POST.get("job_id")
+
+        job_resp = supabase.table('print_jobs').select('*').eq('id', job_id).execute()
+
+        if job_resp.data:
+            job = job_resp.data[0]
+
+            if job.get('is_paid') == True or job.get('status') == 'Completed':
+                messages.error(request, "Cannot delete a Paid or Completed job. Archive it instead.")
+                return redirect('staff_dashboard')
+            try:
+                file_path_parts = job['file_url'].split('/')[-3:]
+                file_path = "/".join(file_path_parts)
+                supabase.storage.from_(bucket).remove([file_path])
+
+                if job.get('payment_proof_url'):
+                    proof_parts = job['payment_proof_url'].split('/')[-3:]
+                    proof_path = "/".join(proof_parts)
+                    supabase.storage.from_(bucket).remove([proof_path])
+            except Exception as e:
+                print(f"Error deleting file: {e}")
+
+            supabase.table('print_jobs').delete().eq('id', job_id).execute()
+
+        else:
+            messages.error(request, "Job not found.")
+
+    return redirect('staff_dashboard')
 
 
 @login_required(login_url='login')
 @never_cache
 def student_dashboard(request: HttpRequest) -> HttpResponse:
-    # Update overdue invoices for this user
     update_overdue_invoices(request.user.id)
 
     context = {
@@ -406,18 +480,23 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         'file_name': request.session.get('file_name'),
         'total_pages': request.session.get('total_pages'),
         'form_data': {},
-        'total_cost': None,
+
+        # Alerts
+        'history_msg': request.session.pop('history_msg', None),
+        'cancel_msg': request.session.pop('cancel_msg', None),
+        'submission_msg': request.session.pop('submission_msg', None),
     }
 
-    # Fetch jobs from Supabase
+    # Fetch jobs
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
+        .neq('status', 'Completed') \
         .order('submitted_at', desc=True) \
         .execute()
+
     jobs = jobs_resp.data or []
 
-    # Calculate invoice statistics
     unpaid_invoices = [job for job in jobs if not job.get('is_paid') and job.get('status') != 'Cancelled']
     overdue_invoices = [job for job in jobs if job.get('status') == 'Overdue']
 
@@ -426,20 +505,19 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         'latest_job': jobs[0] if jobs else None,
         'unpaid_invoices': unpaid_invoices,
         'overdue_invoices': overdue_invoices,
-        'total_invoices': len(jobs),
     })
 
     if request.method == 'POST':
         action = request.POST.get('action')
 
+        # --- MANUAL UPLOAD ---
         if 'print_file' in request.FILES:
             file = request.FILES['print_file']
-
             if not file.name.lower().endswith('.pdf'):
                 messages.error(request, "Only PDF files allowed.")
                 return redirect('student_dashboard')
 
-            if file.size > 25 * 1024 * 1024:
+            if file.size > MAX_PREVIEW_SIZE:
                 messages.error(request, "File size must be 25 MB or less.")
                 return redirect('student_dashboard')
 
@@ -451,150 +529,105 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             request.session['pdf_data'] = base64.b64encode(pdf_file.read()).decode()
             request.session['file_name'] = file.name
             request.session['total_pages'] = page_count
-
-            messages.success(request, "File preview ready.")
+            request.session['submission_msg'] = "✓ File preview ready"
             return redirect('student_dashboard')
 
-        # CLEAR
+        # --- CLEAR ---
         if action == 'clear':
             for k in ['pdf_data', 'file_name', 'total_pages']:
                 request.session.pop(k, None)
             return redirect('student_dashboard')
 
-        # PRESERVE FORM
-        context['form_data'] = {
-            'pages': request.session.get('total_pages'),
-            'paper_size': request.POST.get('paper_size'),
-            'color_option': request.POST.get('color_option'),
-        }
-
-        # CALCULATE COST
-        if action == 'calculate':
-            pages = context['form_data']['pages']
-            paper = context['form_data']['paper_size']
-            color = context['form_data']['color_option']
-
-            if not all([pages, paper, color]):
-                messages.error(request, "Fill all fields.")
-            else:
-                price = PRICING[color][paper]
-                total = price * int(pages)
-                request.session['total_cost'] = total
-                context['total_cost'] = f"{total:.2f}"
-
-        # SUBMIT JOB WITH INVOICE
+        # --- SUBMIT JOB ---
         if action == 'submit_job':
             if not request.session.get('pdf_data'):
                 messages.error(request, "Upload a file first.")
                 return redirect('student_dashboard')
 
-            # Check if user has overdue invoices
             if context['overdue_invoices']:
-                messages.error(request, "You have overdue invoices. Please settle them before submitting new jobs.")
+                messages.error(request, "You have overdue invoices.")
                 return redirect('student_dashboard')
 
             pdf_data = base64.b64decode(request.session['pdf_data'])
             file_name = request.session['file_name']
             page_count = request.session['total_pages']
-            total_cost = request.session.get('total_cost', 0.0)
+            total_cost_str = request.POST.get('calculated_total_cost')
+            total_cost = float(total_cost_str) if total_cost_str else 0.0
+
+            p_type = request.POST.get('paper_type')
+            p_size = request.POST.get('paper_size')
+            pr_type = request.POST.get('color_option')
 
             file_id = str(uuid.uuid4())
             path = f"{request.user.id}/{file_id}/{file_name}"
-
-            supabase.storage.from_(bucket).upload(
-                path, pdf_data, {'content-type': 'application/pdf'}
-            )
+            supabase.storage.from_(bucket).upload(path, pdf_data, {'content-type': 'application/pdf'})
             file_url = supabase.storage.from_(bucket).get_public_url(path)
 
-            # Generate invoice data
             invoice_number = generate_invoice_number()
-            due_date = datetime.now() + timedelta(hours=24)
 
-            # Save record with invoice information
+            ph_tz = pytz.timezone('Asia/Manila')
+            now_ph = datetime.now(ph_tz)
+
+            due_date = now_ph + timedelta(hours=24)
+
             job_data = {
                 'user_id': request.user.id,
                 'username': request.user.username,
                 'file_name': file_name,
                 'file_url': file_url,
                 'pages': page_count,
-                'paper_size': context['form_data']['paper_size'],
-                'color_option': context['form_data']['color_option'],
-                'total_cost': f"{float(total_cost):.2f}",
+                'paper_type': p_type,
+                'paper_size': p_size,
+                'color_option': pr_type,
+                'total_cost': f"{total_cost:.2f}",
                 'status': 'Unpaid',
                 'payment_status': 'Unpaid',
-                'payment_proof_url': None,
                 'invoice_number': invoice_number,
-                'invoice_date': 'now()',
+                'invoice_date': now_ph.isoformat(),
                 'due_date': due_date.isoformat(),
+                'submitted_at': now_ph.isoformat(),
                 'is_paid': False,
-                'submitted_at': 'now()'
             }
-
             supabase.table('print_jobs').insert(job_data).execute()
 
-            # Clear session
-            for k in ['pdf_data', 'file_name', 'total_pages', 'total_cost']:
-                request.session.pop(k, None)
+            request.session['history_msg'] = f"Job '{file_name}' submitted! Invoice #{invoice_number} created."
 
-            messages.success(request, f"Job submitted! Invoice #{invoice_number} created. Please pay within 24 hours.")
+            for k in ['pdf_data', 'file_name', 'total_pages']:
+                request.session.pop(k, None)
             return redirect('student_dashboard')
 
-        # CANCEL JOB
+        # --- CANCEL JOB ---
         if action == 'cancel_job':
             job_id = request.POST.get('job_id')
-            job_resp = supabase.table('print_jobs') \
-                .select('*') \
-                .eq('id', job_id) \
-                .eq('user_id', request.user.id) \
-                .execute()
+            job_resp = supabase.table('print_jobs').select('*').eq('id', job_id).eq('user_id',
+                                                                                    request.user.id).execute()
             job = job_resp.data[0] if job_resp.data else None
 
             if job and job['status'] in ['Unpaid', 'Pending Review']:
-                # Remove file from storage
                 path = '/'.join(job['file_url'].split('/')[-2:])
                 supabase.storage.from_(bucket).remove([path])
-
-                # Update status to cancelled
-                supabase.table('print_jobs') \
-                    .update({'status': 'Cancelled'}) \
-                    .eq('id', job_id) \
-                    .execute()
-
-                messages.success(request, "Job cancelled successfully.")
+                supabase.table('print_jobs').update({'status': 'Cancelled'}).eq('id', job_id).execute()
+                request.session['cancel_msg'] = f"Cancelled '{job['file_name']}' successfully."
             else:
-                messages.error(request, "Cannot cancel job in its current status.")
+                messages.error(request, "Cannot cancel this job.")
             return redirect('student_dashboard')
 
-        # UPLOAD PAYMENT PROOF
+        # --- UPLOAD PROOF ---
         if action == 'upload_payment_proof_modal':
             job_id = request.POST.get('job_id')
-
             img = request.FILES.get("payment_proof")
-            if not img:
-                messages.error(request, "Please upload an image.")
-                return redirect("student_dashboard")
 
-            if not img.name.lower().endswith(('.jpg', '.jpeg', '.png')):
-                messages.error(request, "Only JPG or PNG allowed.")
-                return redirect("student_dashboard")
+            if img:
+                proof_id = str(uuid.uuid4())
+                proof_path = f"{request.user.id}/{proof_id}/{img.name}"
+                supabase.storage.from_(bucket).upload(proof_path, img.read(), {"content-type": img.content_type})
+                proof_url = supabase.storage.from_(bucket).get_public_url(proof_path)
 
-            proof_id = str(uuid.uuid4())
-            proof_path = f"{request.user.id}/{proof_id}/{img.name}"
-
-            supabase.storage.from_(bucket).upload(
-                proof_path,
-                img.read(),
-                {"content-type": img.content_type}
-            )
-            proof_url = supabase.storage.from_(bucket).get_public_url(proof_path)
-
-            supabase.table("print_jobs").update({
-                "payment_proof_url": proof_url,
-                "payment_status": "Pending Review",
-                "status": "Pending Review",
-            }).eq("id", job_id).execute()
-
-            messages.success(request, "Payment proof uploaded. Waiting for staff approval.")
+                supabase.table("print_jobs").update({
+                    "payment_proof_url": proof_url,
+                    "payment_status": "Verifying",
+                    "status": "Verifying",
+                }).eq("id", job_id).execute()
             return redirect("student_dashboard")
 
     else:
@@ -604,11 +637,36 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
     return render(request, 'subtemplates/student_dashboard.html', context)
 
+def get_job_detail(request, job_id):
+    resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
+    if resp.data:
+        job = resp.data[0]
+
+        p_type = job.get('paper_type') or 'standard'
+        p_size = job.get('paper_size') or 'A4'
+        c_opt = job.get('color_option') or 'bw'
+
+        cost_pt = PRICING_CONFIG['paper_type'].get(p_type, 0.0)
+        cost_ps = PRICING_CONFIG['paper_size'].get(p_size, 0.0)
+        cost_co = PRICING_CONFIG['color_option'].get(c_opt, 0.0)
+
+        type_labels = {'standard': 'Standard', 'colored': 'Colored', 'glossy': 'Glossy'}
+        color_labels = {'bw': 'Black & White', 'color': 'Colored'}
+
+        job['paper_type_label'] = type_labels.get(p_type, p_type.title())
+        job['paper_type_cost'] = cost_pt
+        job['paper_size_label'] = p_size
+        job['paper_size_cost'] = cost_ps
+        job['color_label'] = color_labels.get(c_opt, c_opt.title())
+        job['color_cost'] = cost_co
+
+        return JsonResponse(job)
+    return JsonResponse({'error': 'Not found'}, status=404)
+
 
 # INVOICE MANAGEMENT VIEWS
 @login_required
 def view_invoice(request, job_id):
-    """Display detailed invoice"""
     job_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('id', job_id) \
@@ -621,7 +679,6 @@ def view_invoice(request, job_id):
 
     job = job_resp.data[0]
 
-    # Check print eligibility
     can_print, print_message = check_print_eligibility(job)
 
     context = {
@@ -636,7 +693,6 @@ def view_invoice(request, job_id):
 
 @login_required
 def invoice_list(request):
-    """List all user invoices"""
     invoices_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
@@ -645,7 +701,7 @@ def invoice_list(request):
 
     invoices = invoices_resp.data or []
 
-    # Calculate statistics - ADD REJECTED COUNT
+    # Calculate statistics
     stats = {
         'total': len(invoices),
         'paid': len([inv for inv in invoices if inv.get('is_paid')]),
@@ -661,31 +717,34 @@ def invoice_list(request):
     return render(request, 'subtemplates/invoice_list.html', context)
 
 
-# For the modals
-def get_job_detail(request, job_id):
-    resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
-    if resp.data:
-        return JsonResponse(resp.data[0])
-    return JsonResponse({'error': 'Not found'}, status=404)
-
-
 @login_required
 def staff_update_payment(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
         action = request.POST.get("action")
 
-        new_status = "Accepted" if action == "accept" else "Rejected"
-        is_paid = action == "accept"
-        job_status = "Ready" if action == "accept" else "Unpaid"
+        # Acceptance logic
+        if action == "accept":
+            new_payment_status = "Accepted"
+            is_paid = True
+            job_status = "On Queue"
+
+            # Rejection logic
+        elif action == "reject":
+            new_payment_status = "Rejected"
+            is_paid = False
+            job_status = "Unpaid"
+
+        else:
+            messages.error(request, "Invalid action.")
+            return redirect("staff_dashboard")
 
         supabase.table("print_jobs").update({
-            "payment_status": new_status,
+            "payment_status": new_payment_status,
             "is_paid": is_paid,
             "status": job_status
         }).eq("id", job_id).execute()
 
-        messages.success(request, f"Payment proof {new_status.lower()}.")
         return redirect("staff_dashboard")
 
 
@@ -694,12 +753,18 @@ def staff_confirm_job(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
 
-        # Only allow if payment is accepted
-        job_resp = supabase.table("print_jobs") \
-            .select("payment_status, is_paid") \
-            .eq("id", job_id) \
-            .execute()
+        # --- 1. SPAM PREVENTION (30 Seconds) ---
+        cooldown_key = f"notify_cooldown_{job_id}"
+        last_sent = request.session.get(cooldown_key, 0)
+        current_time = time.time()
 
+        if current_time - last_sent < 30:
+            remaining = int(30 - (current_time - last_sent))
+            messages.warning(request, f"Please wait {remaining}s before sending another email.")
+            return redirect("staff_dashboard")
+
+        # Fetch Data
+        job_resp = supabase.table("print_jobs").select("*").eq("id", job_id).execute()
         if not job_resp.data:
             messages.error(request, "Job not found.")
             return redirect("staff_dashboard")
@@ -710,15 +775,39 @@ def staff_confirm_job(request):
             messages.error(request, "Cannot confirm. Payment has not been accepted.")
             return redirect("staff_dashboard")
 
-        supabase.table("print_jobs").update({
-            "status": "Ready"
-        }).eq("id", job_id).execute()
+        # Check valid status
+        if job["status"] not in ["Pending", "On Queue", "Ready"]:
+            messages.error(request, "Job must be 'On Queue' or 'Ready' to notify user.")
+            return redirect("staff_dashboard")
 
-        messages.success(request, "Job marked as Ready for pickup.")
+        # --- 2. GET EMAIL ---
+        student_email = None
+        try:
+            student_user = User.objects.get(id=job['user_id'])
+            student_email = student_user.email
+        except User.DoesNotExist:
+            print("Student user not found.")
+
+        # --- 3. EXECUTE ---
+        if job["status"] == "Ready":
+            if student_email:
+                send_ready_email(student_email, job['file_name'], is_reminder=True)
+
+            messages.success(request, "Reminder email sent.")
+            request.session[cooldown_key] = current_time
+
+        else:
+            supabase.table("print_jobs").update({"status": "Ready"}).eq("id", job_id).execute()
+
+            if student_email:
+                send_ready_email(student_email, job['file_name'], is_reminder=False)
+
+            messages.success(request, "Job Ready. Email sent.")
+            request.session[cooldown_key] = current_time
+
         return redirect("staff_dashboard")
 
 
-# PRINT RESTRICTION CHECK
 @login_required
 def check_print_status(request, job_id):
     """API endpoint to check if a job can be printed"""
@@ -740,3 +829,144 @@ def check_print_status(request, job_id):
         'status': job.get('status'),
         'is_paid': job.get('is_paid')
     })
+
+
+@login_required
+def student_delete_job(request):
+    """Allows student to remove a job from history ONLY if it is Cancelled"""
+    if request.method == "POST":
+        job_id = request.POST.get("job_id")
+
+        # 1. Fetch Job
+        job_resp = supabase.table('print_jobs') \
+            .select('*') \
+            .eq('id', job_id) \
+            .eq('user_id', request.user.id) \
+            .execute()
+
+        if job_resp.data:
+            job = job_resp.data[0]
+
+            # 2. STRICT CHECK: Must be 'Cancelled'
+            if job.get('status') == 'Cancelled':
+                # Delete Record (Files should already be gone from cancel action)
+                supabase.table('print_jobs').delete().eq('id', job_id).execute()
+
+                request.session['cancel_msg'] = f"Removed '{job['file_name']}' from history."
+            else:
+                messages.error(request, "Only cancelled jobs can be deleted.")
+
+    return redirect('student_dashboard')
+
+
+# --- Invoice System Functions ---
+def generate_invoice_number():
+    date_part = datetime.now().strftime("%Y%m%d")
+    random_part = secrets.token_hex(3).upper()
+    return f"INV-{date_part}-{random_part}"
+
+def check_print_eligibility(job):
+    if job.get('is_paid') == False:
+        return False, "Invoice unpaid - please complete payment first"
+    elif job.get('status') == 'Verifying':
+        return False, "Payment pending review"
+    elif job.get('status') == 'Cancelled':
+        return False, "Job was cancelled"
+    elif job.get('status') == 'Overdue':
+        return False, "Payment overdue - please contact support"
+    return True, "Eligible for printing"
+
+@login_required
+def staff_complete_job(request):
+    if request.method == "POST" and request.user.is_staff:
+        job_id = request.POST.get("job_id")
+        action = request.POST.get("action")
+
+        job_resp = supabase.table("print_jobs").select("status").eq("id", job_id).execute()
+        if not job_resp.data:
+            messages.error(request, "Job not found.")
+            return redirect("staff_dashboard")
+
+        job = job_resp.data[0]
+
+        if action == "mark_completed":
+            new_status = "Completed"
+        elif action == "unmark_completed":
+            new_status = "Ready"
+        else:
+            return redirect("staff_dashboard")
+
+        supabase.table("print_jobs").update({"status": new_status}).eq("id", job_id).execute()
+
+        return redirect(request.META.get('HTTP_REFERER', 'staff_dashboard'))
+
+    return redirect("staff_dashboard")
+
+def update_overdue_invoices(user_id=None):
+    now = timezone.now().isoformat()
+    query = supabase.table('print_jobs') \
+        .update({'status': 'Overdue'}) \
+        .eq('is_paid', False) \
+        .lt('due_date', now) \
+        .eq('status', 'Unpaid')
+
+    if user_id:
+        query = query.eq('user_id', user_id)
+
+    query.execute()
+
+@login_required
+def print_job_history(request):
+    jobs_resp = supabase.table('print_jobs') \
+        .select('*') \
+        .eq('user_id', request.user.id) \
+        .eq('status', 'Completed') \
+        .order('submitted_at', desc=True) \
+        .execute()
+
+    completed_jobs = jobs_resp.data or []
+
+    return render(request, 'subtemplates/print_job_history.html', {
+        'completed_jobs': completed_jobs
+    })
+
+
+@login_required
+def staff_job_history(request):
+    if not request.user.is_staff:
+        return redirect('student_dashboard')
+    jobs_resp = supabase.table('print_jobs') \
+        .select('*') \
+        .eq('status', 'Completed') \
+        .order('submitted_at', desc=True) \
+        .execute()
+
+    completed_jobs = jobs_resp.data or []
+
+    return render(request, 'subtemplates/staff_job_history.html', {
+        'completed_jobs': completed_jobs
+    })
+
+
+def send_ready_email(email, filename, is_reminder=False):
+    subject = "Reminder: Your Print Job is Ready!" if is_reminder else "Your Print Job is Ready!"
+
+    body = (
+        f"Hello,\n\n"
+        f"Good news! Your document '{filename}' is printed and ready for pickup.\n"
+        f"Please head to the printing station to collect it.\n\n"
+        f"Thank you for using QPrint."
+    )
+
+    message = Mail(
+        from_email="qprintapp@gmail.com",
+        to_emails=email,
+        subject=subject,
+        plain_text_content=body,
+    )
+
+    try:
+        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
+        sg.send(message)
+    except Exception as e:
+        print(f"SendGrid error: {e}")

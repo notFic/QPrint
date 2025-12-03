@@ -158,3 +158,11 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 SUPABASE_CLIENT = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 SUPABASE_BUCKET = "print-jobs"
+
+USE_TZ = True
+TIME_ZONE = 'Asia/Manila'
+
+
+# OPTION 1: DEVELOPMENT (Prints emails to your terminal/console - SAFE)
+# Use this right now to test the "Notify" feature safely.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

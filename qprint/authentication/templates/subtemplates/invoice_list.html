@@ -1,7 +1,7 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
-{% block title %}My Invoices - QPrint{% endblock %}
+{% block title %}My Invoices | QPrint Project{% endblock %}
 
 {% block stylesheet %}
 <link rel="stylesheet" href="{% static 'qprint/css/student_dashboard.css' %}">
@@ -13,8 +13,7 @@
     <a href="{% url 'student_dashboard' %}" class="back-btn">← Back to Dashboard</a>
     
     <h1>My Invoices</h1>
-    
-    <!-- Statistics -->
+
     <div class="invoice-stats">
         <div class="stat-card">
             <div class="stat-number stat-total">{{ stats.total }}</div>
@@ -32,7 +31,6 @@
             <div class="stat-number stat-overdue">{{ stats.overdue }}</div>
             <div class="stat-label">Overdue</div>
         </div>
-        <!-- NEW: Rejected Invoices Stat Card -->
         <div class="stat-card">
             <div class="stat-number stat-rejected">{{ stats.rejected }}</div>
             <div class="stat-label">Rejected</div>
