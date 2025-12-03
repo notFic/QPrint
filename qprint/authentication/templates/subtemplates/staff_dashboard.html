@@ -1,7 +1,7 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
-{% block title %}Staff Dashboard{% endblock %}
+{% block title %}Staff Dashboard | Q-Print Project{% endblock %}
 
 {% block stylesheet %}
 <link rel="stylesheet" href="{% static 'qprint/css/staff_dashboard.css' %}">
@@ -12,9 +12,7 @@
 
 <a href="{% url 'staff_job_history' %}">History Archive</a>
 
-<a href="{% url 'revenue_dashboard' %}">Reports</a>
-
-<a href="#settings">Settings</a>
+<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
 
 <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
@@ -356,7 +354,7 @@ window.onclick = function(e) {
     if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
 }
 
-// --- Checkbox Radio Logic ---
+// --- Checkbox Radio Logic for Sort Algorithm ---
 document.addEventListener('DOMContentLoaded', () => {
     const sortInputs = document.querySelectorAll('input[name="sort"]');
     sortInputs.forEach(input => {

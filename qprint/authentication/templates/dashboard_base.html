@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{% block title %}Q-Print Dashboard{% endblock %}</title>
+  <title>{% block title %}Welcome{% endblock %}</title>
 
   <link rel="stylesheet" href="{% static 'qprint/css/dashboard_base.css' %}">
 
@@ -115,7 +115,7 @@
     document.querySelector('.close-btn').addEventListener('click', toggleSidebar);
     backdrop.addEventListener('click', toggleSidebar);
 
-    // 2. Terms Modal Logic (Global)
+    // 2. Terms Modal Logic
     function openTermsModal() {
         // If sidebar is open on mobile, close it first so modal isn't covered
         if (sidebar.classList.contains('open')) {
@@ -143,7 +143,7 @@
       }
     })();
 
-    // 4. Global Window Click (Handles closing modals when clicking outside)
+    // 4. Window Click
     window.addEventListener('click', (e) => {
         const termsModal = document.getElementById('termsModal');
         if (e.target === termsModal) {
@@ -151,7 +151,6 @@
         }
     });
 
-    // 5. Toast Auto-Dismiss
     document.addEventListener('DOMContentLoaded', () => {
         const toasts = document.querySelectorAll('.toast');
         toasts.forEach(toast => {

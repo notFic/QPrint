@@ -462,7 +462,6 @@ def staff_delete_job(request):
             except Exception as e:
                 print(f"Error deleting file: {e}")
 
-            # 2. Delete Record
             supabase.table('print_jobs').delete().eq('id', job_id).execute()
 
         else:
@@ -471,7 +470,6 @@ def staff_delete_job(request):
     return redirect('staff_dashboard')
 
 
-# --- STUDENT DASHBOARD ---
 @login_required(login_url='login')
 @never_cache
 def student_dashboard(request: HttpRequest) -> HttpResponse:
@@ -499,7 +497,6 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
     jobs = jobs_resp.data or []
 
-    # Invoice Stats
     unpaid_invoices = [job for job in jobs if not job.get('is_paid') and job.get('status') != 'Cancelled']
     overdue_invoices = [job for job in jobs if job.get('status') == 'Overdue']
 
@@ -554,8 +551,6 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
             pdf_data = base64.b64decode(request.session['pdf_data'])
             file_name = request.session['file_name']
             page_count = request.session['total_pages']
-
-            # GET COST FROM HIDDEN INPUT (Sent by JS)
             total_cost_str = request.POST.get('calculated_total_cost')
             total_cost = float(total_cost_str) if total_cost_str else 0.0
 
@@ -642,14 +637,11 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
     return render(request, 'subtemplates/student_dashboard.html', context)
 
-
-# ──────── API FOR MODAL ─────────
 def get_job_detail(request, job_id):
     resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
     if resp.data:
         job = resp.data[0]
 
-        # Calculate Breakdown Values on the fly
         p_type = job.get('paper_type') or 'standard'
         p_size = job.get('paper_size') or 'A4'
         c_opt = job.get('color_option') or 'bw'
@@ -675,7 +667,6 @@ def get_job_detail(request, job_id):
 # INVOICE MANAGEMENT VIEWS
 @login_required
 def view_invoice(request, job_id):
-    """Display detailed invoice"""
     job_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('id', job_id) \
@@ -688,7 +679,6 @@ def view_invoice(request, job_id):
 
     job = job_resp.data[0]
 
-    # Check print eligibility
     can_print, print_message = check_print_eligibility(job)
 
     context = {
@@ -703,7 +693,6 @@ def view_invoice(request, job_id):
 
 @login_required
 def invoice_list(request):
-    """List all user invoices"""
     invoices_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
@@ -712,7 +701,7 @@ def invoice_list(request):
 
     invoices = invoices_resp.data or []
 
-    # Calculate statistics - ADD REJECTED COUNT
+    # Calculate statistics
     stats = {
         'total': len(invoices),
         'paid': len([inv for inv in invoices if inv.get('is_paid')]),
@@ -738,14 +727,13 @@ def staff_update_payment(request):
         if action == "accept":
             new_payment_status = "Accepted"
             is_paid = True
-            # CHANGED: "Pending" -> "On Queue"
             job_status = "On Queue"
 
             # Rejection logic
         elif action == "reject":
             new_payment_status = "Rejected"
             is_paid = False
-            job_status = "Unpaid"  # Revert to Unpaid status if payment is rejected
+            job_status = "Unpaid"
 
         else:
             messages.error(request, "Invalid action.")
@@ -774,7 +762,6 @@ def staff_confirm_job(request):
             remaining = int(30 - (current_time - last_sent))
             messages.warning(request, f"Please wait {remaining}s before sending another email.")
             return redirect("staff_dashboard")
-        # ---------------------------------------
 
         # Fetch Data
         job_resp = supabase.table("print_jobs").select("*").eq("id", job_id).execute()
@@ -803,7 +790,6 @@ def staff_confirm_job(request):
 
         # --- 3. EXECUTE ---
         if job["status"] == "Ready":
-            # Reminder Mode
             if student_email:
                 send_ready_email(student_email, job['file_name'], is_reminder=True)
 
@@ -811,7 +797,6 @@ def staff_confirm_job(request):
             request.session[cooldown_key] = current_time
 
         else:
-            # First Time Ready Mode
             supabase.table("print_jobs").update({"status": "Ready"}).eq("id", job_id).execute()
 
             if student_email:
@@ -823,7 +808,6 @@ def staff_confirm_job(request):
         return redirect("staff_dashboard")
 
 
-# PRINT RESTRICTION CHECK
 @login_required
 def check_print_status(request, job_id):
     """API endpoint to check if a job can be printed"""
@@ -847,15 +831,13 @@ def check_print_status(request, job_id):
     })
 
 
-# In views.py
-
 @login_required
 def student_delete_job(request):
     """Allows student to remove a job from history ONLY if it is Cancelled"""
     if request.method == "POST":
         job_id = request.POST.get("job_id")
 
-        # 1. Fetch Job (Ensure user owns it)
+        # 1. Fetch Job
         job_resp = supabase.table('print_jobs') \
             .select('*') \
             .eq('id', job_id) \
@@ -879,13 +861,11 @@ def student_delete_job(request):
 
 # --- Invoice System Functions ---
 def generate_invoice_number():
-    """Generate unique invoice number: INV-YYYYMMDD-XXXXX"""
     date_part = datetime.now().strftime("%Y%m%d")
     random_part = secrets.token_hex(3).upper()
     return f"INV-{date_part}-{random_part}"
 
 def check_print_eligibility(job):
-    """Check if job can be printed"""
     if job.get('is_paid') == False:
         return False, "Invoice unpaid - please complete payment first"
     elif job.get('status') == 'Verifying':
@@ -898,12 +878,10 @@ def check_print_eligibility(job):
 
 @login_required
 def staff_complete_job(request):
-    """Allows staff to mark a job as completed or undo it."""
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
         action = request.POST.get("action")
 
-        # ... (Fetching job logic remains same) ...
         job_resp = supabase.table("print_jobs").select("status").eq("id", job_id).execute()
         if not job_resp.data:
             messages.error(request, "Job not found.")
@@ -911,7 +889,6 @@ def staff_complete_job(request):
 
         job = job_resp.data[0]
 
-        # Logic Update
         if action == "mark_completed":
             new_status = "Completed"
         elif action == "unmark_completed":
@@ -921,13 +898,11 @@ def staff_complete_job(request):
 
         supabase.table("print_jobs").update({"status": new_status}).eq("id", job_id).execute()
 
-        # SUCCESS: Redirect back to where the user clicked the button
         return redirect(request.META.get('HTTP_REFERER', 'staff_dashboard'))
 
     return redirect("staff_dashboard")
 
 def update_overdue_invoices(user_id=None):
-    """Mark invoices as overdue if past deadline"""
     now = timezone.now().isoformat()
     query = supabase.table('print_jobs') \
         .update({'status': 'Overdue'}) \
@@ -942,9 +917,6 @@ def update_overdue_invoices(user_id=None):
 
 @login_required
 def print_job_history(request):
-    """View for the separated Print Job History page (Completed jobs only)"""
-
-    # Fetch only Completed jobs for the current user
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
@@ -961,11 +933,8 @@ def print_job_history(request):
 
 @login_required
 def staff_job_history(request):
-    """View for Staff to see global print history"""
     if not request.user.is_staff:
         return redirect('student_dashboard')
-
-    # Fetch ALL Completed jobs (Global History)
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('status', 'Completed') \
@@ -980,7 +949,6 @@ def staff_job_history(request):
 
 
 def send_ready_email(email, filename, is_reminder=False):
-    """Sends a notification using the existing SendGrid setup."""
     subject = "Reminder: Your Print Job is Ready!" if is_reminder else "Your Print Job is Ready!"
 
     body = (
@@ -998,7 +966,6 @@ def send_ready_email(email, filename, is_reminder=False):
     )
 
     try:
-        # Reusing your existing SendGrid Client pattern
         sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
         sg.send(message)
     except Exception as e:

@@ -174,9 +174,8 @@ body {
     text-decoration: underline;
 }
 
-/* ✅ Modal Styling */
 .modal {
-    display: none; /* hidden by default */
+    display: none;
     position: fixed;
     z-index: 1000;
     inset: 0;

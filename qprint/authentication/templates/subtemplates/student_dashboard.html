@@ -1,7 +1,7 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
-{% block title %}Student Dashboard{% endblock %}
+{% block title %}My Dashboard | Q-Print Project{% endblock %}
 
 {% block stylesheet %}
 <link rel="stylesheet" href="{% static 'qprint/css/student_dashboard.css' %}">
@@ -309,6 +309,7 @@
     }
   });
 
+// --- Specification Price Calculator ---
 function calculateCostJS() {
     const pages = parseInt(document.getElementById('pages').value) || 0;
     if (pages === 0) { alert("Please upload a file first."); return; }
@@ -339,6 +340,7 @@ function calculateCostJS() {
     document.getElementById('cost-result-area').style.display = 'block';
 }
 
+// --- Job Detail Modal ---
 function openModal(jobId) {
   fetch(`/api/job/${jobId}/`)
     .then(r => r.json())
@@ -362,10 +364,9 @@ function openModal(jobId) {
       const paymentStatus = job.payment_status; // Get payment status explicitly
       const statusEl = document.getElementById('modal-status');
       statusEl.textContent = status;
-      // Slugify to match CSS (On Queue -> badge-on-queue)
       statusEl.className = `badge badge-${status.toLowerCase().replace(/\s+/g, '-')}`;
 
-      // 4. Status Message Logic (Handles REJECTED status)
+      // 4. Status Message
       const msg = document.getElementById('modal-status-message');
       msg.className = "status-message"; // Reset classes
       msg.style.display = "block";
@@ -387,7 +388,7 @@ function openModal(jobId) {
 
       document.getElementById('pdfPreview').src = job.file_url;
 
-      // 5. Cancel Button Logic
+      // 5. Cancel Button
       const cancelBtn = document.getElementById('cancelBtn');
       cancelBtn.onclick = function() { triggerConfirmation('cancel', job.id, job.file_name); };
 
@@ -395,7 +396,7 @@ function openModal(jobId) {
       const isUnpaid = (status === "Unpaid");
       cancelBtn.style.display = (isUnpaid || isVerifying) ? "block" : "none";
 
-      // 6. Payment Logic (Re-enable upload if rejected)
+      // 6. Payment Logic
       const paymentContainer = document.getElementById('payment-section-container');
       const paymentForm = document.getElementById('paymentForm');
       const proofLink = document.getElementById('payment-proof-link');
@@ -409,18 +410,15 @@ function openModal(jobId) {
           paymentContainer.classList.remove('disabled-section');
 
           if (paymentStatus === "Rejected") {
-              // Case A: Rejected -> SHOW FORM again, HIDE old proof link
               paymentForm.style.display = "block";
               noProof.style.display = "none";
               proofLink.style.display = "none";
           } else if (job.payment_proof_url) {
-              // Case B: Has proof & NOT rejected -> Show Link, Hide Form
               proofLink.style.display = "block";
               noProof.style.display = "none";
               paymentForm.style.display = "none";
               proofUrl.href = job.payment_proof_url;
           } else {
-              // Case C: No proof yet -> Show Form
               noProof.style.display = "block";
               paymentForm.style.display = "block";
               proofLink.style.display = "none";
@@ -431,6 +429,7 @@ function openModal(jobId) {
     });
 }
 
+// --- QR Modal ---
 function openQRModal() {
   document.getElementById('qr-file-name').textContent = document.getElementById('modal-file').textContent;
   document.getElementById('qr-file-price').textContent = document.getElementById('modal-cost').textContent;
@@ -440,7 +439,7 @@ function openQRModal() {
 function closeModal() { document.getElementById('jobModal').style.display = 'none'; }
 function closeQRModal() { document.getElementById('qrModal').style.display = 'none'; }
 
-// --- CONFIRMATION MODAL LOGIC ---
+// --- Confirmation Modal ---
 function triggerConfirmation(type, jobId, fileName) {
     const modal = document.getElementById('confirmationModal');
     const title = document.getElementById('confirm-title');
@@ -452,21 +451,18 @@ function triggerConfirmation(type, jobId, fileName) {
     inputId.value = jobId;
 
     if (type === 'cancel') {
-        // CANCEL JOB from Modal
+        // Cancels Print Job
         title.textContent = "Cancel Print Job?";
         message.innerHTML = `Are you sure you want to cancel <br><strong>${fileName}</strong>?`;
 
-        // POST to current page with action="cancel_job"
         form.action = "";
         inputAction.disabled = false;
         inputAction.value = "cancel_job";
 
     } else if (type === 'delete_history') {
-        // DELETE CANCELLED JOB from History List
         title.textContent = "Delete from History?";
         message.innerHTML = `Are you sure you want to remove <br><strong>${fileName}</strong> from your history?`;
 
-        // POST to student_delete_job URL
         form.action = "{% url 'student_delete_job' %}";
         inputAction.disabled = true;
     }
