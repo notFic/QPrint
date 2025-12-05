@@ -26,7 +26,9 @@
                     </span>
                 </div>
                 <div style="margin-top: 8px; color: #6b7280;">
-                    Issued: {{ invoice.invoice_date|date:"M d, Y" }}
+                    Issued: <span data-date="{{ invoice.invoice_date }}">
+                        {{ invoice.invoice_date|slice:":10" }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -51,6 +53,15 @@
                     <span class="detail-value">{{ invoice.pages }}</span>
                 </div>
                 <div class="detail-row">
+                    <span class="detail-label">Paper Type:</span>
+                    <span class="detail-value">
+                        {% if invoice.paper_type == 'standard' %}Standard
+                        {% elif invoice.paper_type == 'colored' %}Colored
+                        {% elif invoice.paper_type == 'glossy' %}Glossy
+                        {% else %}{{ invoice.paper_type|default:"Standard" }}{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
                     <span class="detail-label">Paper Size:</span>
                     <span class="detail-value">{{ invoice.paper_size }}</span>
                 </div>
@@ -62,7 +73,9 @@
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Submitted:</span>
-                    <span class="detail-value">{{ invoice.submitted_at|date:"M d, Y H:i" }}</span>
+                    <span class="detail-value" data-date="{{ invoice.submitted_at }}">
+                        {{ invoice.submitted_at|slice:":10" }} {{ invoice.submitted_at|slice:"11:16" }}
+                    </span>
                 </div>
             </div>
 
@@ -74,9 +87,16 @@
                     <span class="detail-value">{{ invoice.payment_status }}</span>
                 </div>
                 <div class="detail-row">
+                    <span class="detail-label">Invoice Date:</span>
+                    <span class="detail-value" data-date="{{ invoice.invoice_date }}">
+                        {{ invoice.invoice_date|slice:":10" }} {{ invoice.invoice_date|slice:"11:16" }}
+                    </span>
+                </div>
+                <div class="detail-row">
                     <span class="detail-label">Due Date:</span>
-                    <span class="detail-value {% if invoice.status == 'Overdue' %}overdue-text{% endif %}">
-                        {{ invoice.due_date|date:"M d, Y H:i" }}
+                    <span class="detail-value {% if invoice.status == 'Overdue' %}overdue-text{% endif %}"
+                          data-date="{{ invoice.due_date }}">
+                        {{ invoice.due_date|slice:":10" }} {{ invoice.due_date|slice:"11:16" }}
                         {% if invoice.status == 'Overdue' %} ⚠️{% endif %}
                     </span>
                 </div>
@@ -120,15 +140,29 @@
 
         <!-- Actions -->
         <div class="invoice-actions-detail">
-            <a href="{% url 'student_dashboard' %}" class="secondary-btn">Back to Dashboard</a>
-            <a href="{% url 'invoice_list' %}" class="secondary-btn">View All Invoices</a>
-            
-            {% if not invoice.is_paid and invoice.status != 'Overdue' and invoice.status != 'Cancelled' %}
-            <button type="button" class="primary-btn" 
-                    onclick="openQRModal('{{ invoice.file_name }}', '{{ invoice.total_cost }}')">
-                Pay Now
-            </button>
-            {% endif %}
+            <div class="invoice-btn-group">
+                <a href="{% url 'student_dashboard' %}" class="invoice-btn invoice-btn-secondary invoice-btn-dashboard">
+                    Dashboard
+                </a>
+                <a href="{% url 'invoice_list' %}" class="invoice-btn invoice-btn-secondary invoice-btn-invoices">
+                    All Invoices
+                </a>
+            </div>
+
+            <div class="invoice-btn-group">
+                {% if not invoice.is_paid and invoice.status != 'Overdue' and invoice.status != 'Cancelled' %}
+                <button type="button" class="invoice-btn invoice-btn-primary invoice-btn-pay"
+                        onclick="openQRModal('{{ invoice.file_name }}', '{{ invoice.total_cost }}')">
+                    Pay Now (₱{{ invoice.total_cost }})
+                </button>
+                {% endif %}
+
+                {% if invoice.status == 'Ready' or invoice.status == 'Completed' %}
+                <button type="button" class="invoice-btn invoice-btn-success invoice-btn-download" onclick="downloadReceipt()">
+                    Download Receipt
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
