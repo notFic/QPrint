@@ -27,6 +27,19 @@
 
   <h1>Welcome, {{ user.get_full_name|default:user.username }}</h1>
 
+  <!-- INVOICE ALERTS -->
+  {% if overdue_invoices %}
+  <div class="alert alert-warning">
+    ⚠️ You have {{ overdue_invoices|length }} overdue invoice(s). Please settle them before submitting new print jobs.
+  </div>
+  {% endif %}
+
+  {% if unpaid_invoices %}
+  <div class="alert alert-info">
+    ℹ️ You have {{ unpaid_invoices|length }} unpaid invoice(s).
+  </div>
+  {% endif %}
+
   <div class="top-grid">
     <div class="card history-card">
       <div class="history-header">
@@ -51,7 +64,9 @@
             <div class="history-content" onclick="openModal('{{ job.id }}')">
                 <div class="history-main">
                   <strong>{{ job.file_name }}</strong>
-                  <small>{{ job.submitted_at|date:"M d, Y H:i" }}</small>
+                  <small data-date="{{ job.submitted_at }}">
+                    {{ job.submitted_at|slice:":10" }} {{ job.submitted_at|slice:"11:16" }}
+                  </small>
                 </div>
                 <span class="status-badge status-{{ job.status|lower|slugify }}">{{ job.status }}</span>
             </div>
@@ -91,10 +106,35 @@
       <div class="invoice-details">
         <div class="invoice-row"><span class="label">Document:</span><span class="value">{{ latest_job.file_name }}</span></div>
         <div class="invoice-row"><span class="label">Status:</span><span class="status-badge status-{{ latest_job.status|lower|slugify }}">{{ latest_job.status }}</span></div>
+
+        <!-- ADDED: Invoice Date -->
+        {% if latest_job.invoice_date %}
+        <div class="invoice-row">
+          <span class="label">Invoice Date:</span>
+          <span class="value" data-date="{{ latest_job.invoice_date }}">
+            {{ latest_job.invoice_date|slice:":10" }}
+          </span>
+        </div>
+        {% endif %}
+
+        <!-- ADDED: Due Date -->
+        {% if latest_job.due_date %}
+        <div class="invoice-row {% if latest_job.status == 'Overdue' %}overdue-row{% endif %}">
+          <span class="label">Due Date:</span>
+          <span class="value {% if latest_job.status == 'Overdue' %}overdue-text{% endif %}"
+                data-date="{{ latest_job.due_date }}">
+            {{ latest_job.due_date|slice:":10" }}
+            {% if latest_job.status == 'Overdue' %} ⚠️{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
         <div class="invoice-row total-row"><span class="label">Total Cost:</span><span class="value total-cost">₱{{ latest_job.total_cost }}</span></div>
       </div>
       <div class="invoice-actions">
-        <a href="{% url 'view_invoice' latest_job.id %}" class="secondary-btn" style="display: block; text-align: center; margin-top: 16px;">View Full Invoice</a>
+          <a href="{% url 'view_invoice' latest_job.id %}" class="secondary-btn" style="display: block; text-align: center; margin-top: 16px;">
+              View Full Invoice
+          </a>
       </div>
       {% else %}
       <div class="no-invoice"><p class="muted">No active invoices</p></div>
@@ -426,6 +466,10 @@ function openModal(jobId) {
       }
 
       document.getElementById('jobModal').style.display = "block";
+    })
+    .catch(err => {
+      console.error("Modal error:", err);
+      alert("Could not load job details.");
     });
 }
 

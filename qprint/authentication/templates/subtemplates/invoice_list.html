@@ -62,7 +62,13 @@
                         <strong>{{ invoice.file_name }}</strong><br>
                         <small>{{ invoice.pages }} pages • {{ invoice.paper_size }}</small>
                     </td>
-                    <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                    <td class="invoice-date-raw" data-date="{{ invoice.invoice_date }}">
+                        {% if invoice.invoice_date %}
+                            {{ invoice.invoice_date|slice:":10" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>₱{{ invoice.total_cost }}</td>
                     <td>
                         <span class="status-badge status-{{ invoice.status|lower|slugify }}">
@@ -74,17 +80,17 @@
                             {{ invoice.payment_status }}
                         </span>
                     </td>
-                    <td>
+                    <td class="due-date-raw" data-date="{{ invoice.due_date }}">
                         {% if invoice.due_date %}
-                            {{ invoice.due_date|date:"M d, Y" }}
+                            {{ invoice.due_date|slice:":10" }}
                             {% if invoice.status == 'Overdue' %} ⚠️{% endif %}
                         {% else %}
                             -
                         {% endif %}
                     </td>
                     <td class="invoice-actions">
-                        <a href="{% url 'view_invoice' invoice.id %}" class="action-btn view-btn">
-                            View
+                        <a href="{% url 'view_invoice' invoice.id %}" class="table-action-btn table-action-btn-primary">
+                            Details
                         </a>
                     </td>
                 </tr>

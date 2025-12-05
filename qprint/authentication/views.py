@@ -50,6 +50,68 @@ PRICING_CONFIG = {
     }
 }
 
+
+# ===== NEW HELPER FUNCTIONS =====
+def get_unpaid_invoices(jobs):
+    """Get truly unpaid invoices (excluding pending review, completed, ready, cancelled)"""
+    unpaid = []
+    for job in jobs:
+        # Skip cancelled jobs
+        if job.get('status') == 'Cancelled':
+            continue
+
+        # Skip jobs that are paid or payment is accepted
+        if job.get('is_paid') or job.get('payment_status') in ['Accepted', 'Paid']:
+            continue
+
+        # Skip completed and ready jobs
+        if job.get('status') in ['Completed', 'Ready', 'On Queue']:
+            continue
+
+        # Skip jobs pending verification (payment proof uploaded)
+        if job.get('status') in ['Verifying', 'Pending Review']:
+            continue
+
+        unpaid.append(job)
+    return unpaid
+
+
+def calculate_price_breakdown(job):
+    """Calculate price breakdown for a job (shared function)"""
+    p_type = job.get('paper_type') or 'standard'
+    p_size = job.get('paper_size') or 'A4'
+    c_opt = job.get('color_option') or 'bw'
+    pages = job.get('pages') or 0
+
+    cost_pt = PRICING_CONFIG['paper_type'].get(p_type, 0.0)
+    cost_ps = PRICING_CONFIG['paper_size'].get(p_size, 0.0)
+    cost_co = PRICING_CONFIG['color_option'].get(c_opt, 0.0)
+
+    type_labels = {'standard': 'Standard', 'colored': 'Colored', 'glossy': 'Glossy'}
+    color_labels = {'bw': 'Black & White', 'color': 'Colored'}
+
+    unit_price = cost_pt + cost_ps + cost_co
+    total = unit_price * pages
+
+    return {
+        'paper_type': p_type,
+        'paper_type_label': type_labels.get(p_type, p_type.title()),
+        'paper_type_cost': cost_pt,
+        'paper_size': p_size,
+        'paper_size_label': p_size,
+        'paper_size_cost': cost_ps,
+        'color_option': c_opt,
+        'color_label': color_labels.get(c_opt, c_opt.title()),
+        'color_cost': cost_co,
+        'pages': pages,
+        'unit_price': unit_price,
+        'total': total,
+        'formula': f'({cost_pt} + {cost_ps} + {cost_co}) × {pages}'
+    }
+
+
+# ===== END NEW HELPER FUNCTIONS =====
+
 def send_password_reset_email(request, email):
     try:
         user = User.objects.get(email=email)
@@ -96,6 +158,7 @@ def _send_otp_email(email, otp):
         sg.send(message)
     except Exception as e:
         print(f"SendGrid error: {e}")
+
 
 def register(request):
     if request.method == "POST":
@@ -255,6 +318,7 @@ def verify(request):
 
     return render(request, "subtemplates/verify.html")
 
+
 def login(request):
     if request.method == "POST":
         username = request.POST["username"]
@@ -287,6 +351,7 @@ def login(request):
             })
 
     return render(request, "subtemplates/login.html")
+
 
 @login_required
 def logout(request):
@@ -334,7 +399,7 @@ def reset_password(request, uidb64, token):
                 validate_password(new_password, user)
             except ValidationError as e:
                 messages.error(request, e.messages[0])
-                return render(request, 'subtemplates/reset_password_form.html',{'validlink': True})
+                return render(request, 'subtemplates/reset_password_form.html', {'validlink': True})
 
             user.set_password(new_password)
             user.save()
@@ -497,7 +562,8 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
     jobs = jobs_resp.data or []
 
-    unpaid_invoices = [job for job in jobs if not job.get('is_paid') and job.get('status') != 'Cancelled']
+    # FIXED: Use get_unpaid_invoices() instead of old logic
+    unpaid_invoices = get_unpaid_invoices(jobs)
     overdue_invoices = [job for job in jobs if job.get('status') == 'Overdue']
 
     context.update({
@@ -637,28 +703,37 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
 
     return render(request, 'subtemplates/student_dashboard.html', context)
 
+
 def get_job_detail(request, job_id):
     resp = supabase.table('print_jobs').select('*').eq('id', str(job_id)).execute()
     if resp.data:
         job = resp.data[0]
 
-        p_type = job.get('paper_type') or 'standard'
-        p_size = job.get('paper_size') or 'A4'
-        c_opt = job.get('color_option') or 'bw'
+        # Add formatted dates for display
+        if job.get('invoice_date'):
+            try:
+                dt = datetime.fromisoformat(job['invoice_date'].replace('Z', '+00:00'))
+                job['invoice_date_formatted'] = dt.strftime("%b %d, %Y %H:%M")
+            except:
+                job['invoice_date_formatted'] = job['invoice_date']
 
-        cost_pt = PRICING_CONFIG['paper_type'].get(p_type, 0.0)
-        cost_ps = PRICING_CONFIG['paper_size'].get(p_size, 0.0)
-        cost_co = PRICING_CONFIG['color_option'].get(c_opt, 0.0)
+        if job.get('due_date'):
+            try:
+                dt = datetime.fromisoformat(job['due_date'].replace('Z', '+00:00'))
+                job['due_date_formatted'] = dt.strftime("%b %d, %Y %H:%M")
+            except:
+                job['due_date_formatted'] = job['due_date']
 
-        type_labels = {'standard': 'Standard', 'colored': 'Colored', 'glossy': 'Glossy'}
-        color_labels = {'bw': 'Black & White', 'color': 'Colored'}
+        if job.get('submitted_at'):
+            try:
+                dt = datetime.fromisoformat(job['submitted_at'].replace('Z', '+00:00'))
+                job['submitted_at_formatted'] = dt.strftime("%b %d, %Y %H:%M")
+            except:
+                job['submitted_at_formatted'] = job['submitted_at']
 
-        job['paper_type_label'] = type_labels.get(p_type, p_type.title())
-        job['paper_type_cost'] = cost_pt
-        job['paper_size_label'] = p_size
-        job['paper_size_cost'] = cost_ps
-        job['color_label'] = color_labels.get(c_opt, c_opt.title())
-        job['color_cost'] = cost_co
+        # Use the shared price breakdown function
+        breakdown = calculate_price_breakdown(job)
+        job.update(breakdown)
 
         return JsonResponse(job)
     return JsonResponse({'error': 'Not found'}, status=404)
@@ -701,13 +776,13 @@ def invoice_list(request):
 
     invoices = invoices_resp.data or []
 
-    # Calculate statistics
+    # FIXED: Use get_unpaid_invoices() for accurate statistics
     stats = {
         'total': len(invoices),
         'paid': len([inv for inv in invoices if inv.get('is_paid')]),
-        'unpaid': len([inv for inv in invoices if not inv.get('is_paid') and inv.get('status') != 'Cancelled']),
+        'unpaid': len(get_unpaid_invoices(invoices)),
         'overdue': len([inv for inv in invoices if inv.get('status') == 'Overdue']),
-        'rejected': len([inv for inv in invoices if inv.get('payment_status') == 'Rejected']),  # NEW
+        'rejected': len([inv for inv in invoices if inv.get('payment_status') == 'Rejected']),
     }
 
     context = {
@@ -865,6 +940,7 @@ def generate_invoice_number():
     random_part = secrets.token_hex(3).upper()
     return f"INV-{date_part}-{random_part}"
 
+
 def check_print_eligibility(job):
     if job.get('is_paid') == False:
         return False, "Invoice unpaid - please complete payment first"
@@ -875,6 +951,7 @@ def check_print_eligibility(job):
     elif job.get('status') == 'Overdue':
         return False, "Payment overdue - please contact support"
     return True, "Eligible for printing"
+
 
 @login_required
 def staff_complete_job(request):
@@ -902,6 +979,7 @@ def staff_complete_job(request):
 
     return redirect("staff_dashboard")
 
+
 def update_overdue_invoices(user_id=None):
     now = timezone.now().isoformat()
     query = supabase.table('print_jobs') \
@@ -914,6 +992,7 @@ def update_overdue_invoices(user_id=None):
         query = query.eq('user_id', user_id)
 
     query.execute()
+
 
 @login_required
 def print_job_history(request):

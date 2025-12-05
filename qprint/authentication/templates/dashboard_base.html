@@ -75,7 +75,7 @@
                   <li>QPrint is not responsible for lost or corrupted files once printed.</li>
                   <li>Misuse of the platform may result in account suspension.</li>
               </ul>
-          <p><br>By using the platform, you acknowledge that you’ve read and agree to these conditions.</p>
+          <p><br>By using the platform, you acknowledge that you've read and agree to these conditions.</p>
           </div>
       </div>
   </div>
@@ -151,12 +151,48 @@
         }
     });
 
+    // 5. Toast Notifications (longer display time)
     document.addEventListener('DOMContentLoaded', () => {
         const toasts = document.querySelectorAll('.toast');
         toasts.forEach(toast => {
-            setTimeout(() => { toast.remove(); }, 4500);
+            setTimeout(() => { toast.remove(); }, 6500); // Increased from 4500 to 6500ms
         });
     });
+
+    // ===== SUPABASE DATE FORMATTING =====
+    function formatSupabaseDate(dateString) {
+        if (!dateString || dateString === '-' || dateString === 'None' || dateString.trim() === '') {
+            return '-';
+        }
+
+        try {
+            // Handle: 2025-11-30T23:06:48.640762+00:00
+            const [datePart, timePart] = dateString.split('T');
+            if (!datePart) return dateString;
+
+            const [year, month, day] = datePart.split('-');
+            const time = timePart ? timePart.substring(0, 5) : '';
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            const formatted = `${monthNames[parseInt(month)-1]} ${parseInt(day)}, ${year}`;
+            return time ? `${formatted} ${time}` : formatted;
+        } catch (e) {
+            console.log('Date formatting error:', e, 'for:', dateString);
+            return dateString;
+        }
+    }
+
+    // Apply to all data-date elements on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-date]').forEach(el => {
+            const dateStr = el.getAttribute('data-date');
+            if (dateStr && dateStr !== 'None' && dateStr.trim() !== '') {
+                el.textContent = formatSupabaseDate(dateStr);
+            }
+        });
+    });
+    // ===== END DATE FORMATTING =====
   </script>
 
   {% block extra_js %}{% endblock %}
