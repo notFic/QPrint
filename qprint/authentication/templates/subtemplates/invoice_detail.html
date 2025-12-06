@@ -158,9 +158,9 @@
                 {% endif %}
 
                 {% if invoice.status == 'Ready' or invoice.status == 'Completed' %}
-                <button type="button" class="invoice-btn invoice-btn-success invoice-btn-download" onclick="downloadReceipt()">
+                <a href="{% url 'download_receipt' invoice.id %}" class="invoice-btn invoice-btn-success invoice-btn-download">
                     Download Receipt
-                </button>
+                </a>
                 {% endif %}
             </div>
         </div>

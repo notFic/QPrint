@@ -228,7 +228,7 @@
   border-radius: 6px;
 }
 
-/* Invoice Card */
+/* Invoice Card Styles */
 .invoice-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
 .invoice-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -373,4 +373,46 @@
   overflow-y: auto;
   max-height: 340px;
   margin-bottom: 16px;
+}
+
+/* Alert Styles */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid;
+}
+.alert-warning {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+.alert-info {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+.alert-error {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+/* Overdue Styles */
+.overdue-row {
+  background: #fef3c7;
+}
+.overdue-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Additional Status Badges */
+.status-overdue {
+  background: #fef3c7;
+  color: #92400e;
+}
+.status-accepted {
+  background: #d1fae5;
+  color: #065f46;
 }
