@@ -1,4 +1,4 @@
-/* Invoice System Styles */
+/* Invoice System Styles - For invoice pages only */
 
 /* --- Alert Styles --- */
 .alert {
@@ -26,17 +26,28 @@
     margin-bottom: 24px;
 }
 .stat-card {
-    background: white; padding: 20px;
-    border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     text-align: center;
 }
-.stat-number { font-size: 2rem; font-weight: bold; margin-bottom: 8px; }
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
 .stat-total { color: #3b82f6; }
 .stat-paid { color: #10b981; }
 .stat-unpaid { color: #f59e0b; }
 .stat-overdue { color: #ef4444; }
 .stat-rejected { color: #ef4444; }
-.stat-label { font-size: 0.9rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-label {
+    font-size: 0.9rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
 /* --- Invoice Table (FIXED) --- */
 .invoice-table {
@@ -51,13 +62,13 @@
 
 /* Updated Column Widths - Fixed for Action Button */
 .invoice-table th:nth-child(1) { width: 12%; } /* Invoice # */
-.invoice-table th:nth-child(2) { width: 24%; } /* Document (reduced from 30%) */
+.invoice-table th:nth-child(2) { width: 24%; } /* Document */
 .invoice-table th:nth-child(3) { width: 10%; } /* Date */
 .invoice-table th:nth-child(4) { width: 10%; } /* Amount */
 .invoice-table th:nth-child(5) { width: 10%; } /* Status */
 .invoice-table th:nth-child(6) { width: 10%; } /* Payment */
 .invoice-table th:nth-child(7) { width: 10%; } /* Due Date */
-.invoice-table th:nth-child(8) { width: 14%; } /* Actions (increased from 8%) */
+.invoice-table th:nth-child(8) { width: 14%; } /* Actions */
 
 .invoice-table th,
 .invoice-table td {
@@ -93,7 +104,10 @@
 }
 
 .invoice-table tr:hover { background: #f9fafb; }
-.invoice-table .invoice-number { font-weight: 600; color: #3b82f6; }
+.invoice-table .invoice-number {
+    font-weight: 600;
+    color: #3b82f6;
+}
 
 /* Compact Table Action Button */
 .invoice-actions {
@@ -138,7 +152,9 @@
     color: #6b7280;
     text-decoration: none;
 }
-.back-btn:hover { color: #374151; }
+.back-btn:hover {
+    color: #374151;
+}
 
 .empty-state {
     text-align: center;
@@ -376,31 +392,6 @@
     flex-wrap: wrap;
 }
 
-/* Dashboard Invoice Card Button */
-.dashboard-invoice-btn {
-    display: block;
-    width: 100%;
-    text-align: center;
-    padding: 10px;
-    margin-top: 16px;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    color: #374151;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-
-.dashboard-invoice-btn:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
-}
-
-.dashboard-invoice-btn::before {
-    content: "📄 ";
-}
-
 /* Responsive Design */
 @media (max-width: 1000px) {
     .invoice-table {
@@ -447,7 +438,7 @@
         flex-direction: column;
     }
 
-    .invoice-btn, .dashboard-invoice-btn {
+    .invoice-btn {
         width: 100%;
         min-width: auto;
     }
@@ -461,4 +452,4 @@
     .invoice-actions {
         min-width: 80px;
     }
-}}
+}

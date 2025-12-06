@@ -27,6 +27,9 @@ from django.views.decorators.cache import never_cache
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from django.utils import timezone
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
 
 supabase = settings.SUPABASE_CLIENT
 bucket = settings.SUPABASE_BUCKET
@@ -669,13 +672,28 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                                                                                     request.user.id).execute()
             job = job_resp.data[0] if job_resp.data else None
 
-            if job and job['status'] in ['Unpaid', 'Pending Review']:
-                path = '/'.join(job['file_url'].split('/')[-2:])
-                supabase.storage.from_(bucket).remove([path])
+            if job and job['status'] in ['Unpaid', 'Pending Review', 'Overdue', 'Verifying']:
+                # Delete file from storage
+                try:
+                    path_parts = job['file_url'].split('/')[-3:]
+                    file_path = "/".join(path_parts)
+                    supabase.storage.from_(bucket).remove([file_path])
+                except Exception as e:
+                    print(f"Error deleting file: {e}")
+
+                # Update job status to Cancelled
                 supabase.table('print_jobs').update({'status': 'Cancelled'}).eq('id', job_id).execute()
                 request.session['cancel_msg'] = f"Cancelled '{job['file_name']}' successfully."
+
+                # Also update payment status if it's overdue
+                if job['status'] == 'Overdue':
+                    supabase.table('print_jobs').update({
+                        'payment_status': 'Cancelled',
+                        'is_paid': False
+                    }).eq('id', job_id).execute()
             else:
-                messages.error(request, "Cannot cancel this job.")
+                messages.error(request,
+                               f"Cannot cancel this job. Current status: {job['status'] if job else 'Unknown'}")
             return redirect('student_dashboard')
 
         # --- UPLOAD PROOF ---
@@ -1049,3 +1067,219 @@ def send_ready_email(email, filename, is_reminder=False):
         sg.send(message)
     except Exception as e:
         print(f"SendGrid error: {e}")
+
+
+@login_required(login_url='login')
+def weekly_overview_report(request):
+    """Display a line chart of total print jobs for each day of the week with week navigation"""
+    if not request.user.is_staff:
+        return redirect('student_dashboard')
+
+    # Get timezone
+    ph_tz = pytz.timezone('Asia/Manila')
+    now_ph = datetime.now(ph_tz)
+
+    # Get week offset from query parameter (default: 0 = current week)
+    try:
+        week_offset = int(request.GET.get('week', 0))
+    except ValueError:
+        week_offset = 0
+
+    # Calculate the target week
+    target_date = now_ph + timedelta(weeks=week_offset)
+
+    # Calculate date range for the target week (Monday to Sunday)
+    start_of_week = target_date - timedelta(days=target_date.weekday())  # Monday
+    end_of_week = start_of_week + timedelta(days=6)  # Sunday
+
+    # Adjust to get full week from Monday 00:00 to Sunday 23:59
+    start_date = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    # Query print jobs from this week (all statuses, not just completed)
+    jobs_resp = supabase.table('print_jobs') \
+        .select('*') \
+        .gte('submitted_at', start_date.isoformat()) \
+        .lte('submitted_at', end_date.isoformat()) \
+        .execute()
+
+    jobs = jobs_resp.data or []
+
+    # Initialize dictionaries with all days of week
+    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    daily_counts = {day: 0 for day in day_names}
+    daily_revenue = {day: 0.0 for day in day_names}
+
+    # Count jobs and revenue per day
+    for job in jobs:
+        submitted_at_str = job.get('submitted_at')
+        if submitted_at_str:
+            try:
+                # Parse the date
+                dt_obj = datetime.fromisoformat(submitted_at_str.replace('Z', '+00:00'))
+                job_time_ph = dt_obj.astimezone(ph_tz)
+
+                # Get day of week (0=Monday, 6=Sunday)
+                day_index = job_time_ph.weekday()
+                day_name = day_names[day_index]
+
+                # Count job
+                daily_counts[day_name] += 1
+
+                # Add revenue if job is paid/completed
+                if job.get('is_paid') or job.get('payment_status') == 'Accepted':
+                    try:
+                        cost = float(job.get('total_cost', 0))
+                        daily_revenue[day_name] += cost
+                    except (ValueError, TypeError):
+                        pass
+
+            except Exception as e:
+                print(f"Error processing job date {submitted_at_str}: {e}")
+
+    # Prepare data for the chart
+    chart_labels = list(daily_counts.keys())
+    chart_data = list(daily_counts.values())
+
+    # Prepare revenue data
+    revenue_data = [round(revenue, 2) for revenue in daily_revenue.values()]
+
+    # Calculate statistics
+    total_jobs = sum(chart_data)
+    average_jobs = total_jobs / 7 if total_jobs > 0 else 0
+
+    # Find busiest day
+    if total_jobs > 0:
+        busiest_day = max(daily_counts, key=daily_counts.get)
+        busiest_count = daily_counts[busiest_day]
+        busiest_revenue = daily_revenue[busiest_day]
+    else:
+        busiest_day = "No data"
+        busiest_count = 0
+        busiest_revenue = 0
+
+    # Find least busy day
+    if total_jobs > 0:
+        least_busy_day = min(daily_counts, key=daily_counts.get)
+        least_busy_count = daily_counts[least_busy_day]
+        least_busy_revenue = daily_revenue[least_busy_day]
+    else:
+        least_busy_day = "No data"
+        least_busy_count = 0
+        least_busy_revenue = 0
+
+    # Calculate total revenue for the week
+    total_revenue = sum(daily_revenue.values())
+
+    # Calculate previous and next week offsets
+    prev_week = week_offset - 1
+    next_week = week_offset + 1
+
+    # Check if current week (offset 0)
+    is_current_week = week_offset == 0
+
+    context = {
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+        'revenue_data': revenue_data,
+        'total_jobs': total_jobs,
+        'total_revenue': f"₱{total_revenue:,.2f}" if total_revenue > 0 else "No Revenue",
+        'average_jobs': round(average_jobs, 1),
+        'busiest_day': busiest_day,
+        'busiest_count': busiest_count,
+        'busiest_revenue': f"₱{busiest_revenue:,.2f}" if busiest_revenue > 0 else "No Revenue",
+        'least_busy_day': least_busy_day,
+        'least_busy_count': least_busy_count,
+        'least_busy_revenue': f"₱{least_busy_revenue:,.2f}" if least_busy_revenue > 0 else "No Revenue",
+        'week_start': start_date.strftime('%B %d, %Y'),
+        'week_end': end_date.strftime('%B %d, %Y'),
+        'week_number': start_date.isocalendar()[1],  # ISO week number
+        'date_range': f"{start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}",
+        'week_offset': week_offset,
+        'prev_week': prev_week,
+        'next_week': next_week,
+        'is_current_week': is_current_week,
+        'current_year': start_date.year,
+    }
+
+    return render(request, 'subtemplates/weekly_overview.html', context)
+
+
+@login_required
+def download_receipt(request, job_id):
+    # Get the invoice/job
+    job_resp = supabase.table('print_jobs') \
+        .select('*') \
+        .eq('id', job_id) \
+        .eq('user_id', request.user.id) \
+        .execute()
+
+    if not job_resp.data:
+        return HttpResponse("Receipt not found", status=404)
+
+    job = job_resp.data[0]
+
+    # Create PDF
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+
+    # Title
+    p.setFont("Helvetica-Bold", 24)
+    p.drawString(1 * inch, height - 1 * inch, "QPRINT RECEIPT")
+
+    # Invoice Number
+    p.setFont("Helvetica", 12)
+    p.drawString(1 * inch, height - 1.5 * inch, f"Invoice: {job.get('invoice_number', 'N/A')}")
+    p.drawString(1 * inch, height - 1.75 * inch, f"Date: {job.get('invoice_date', '')[:10]}")
+    p.drawString(1 * inch, height - 2 * inch, f"Status: {job.get('status', 'N/A')}")
+
+    # Job Details
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(1 * inch, height - 2.5 * inch, "Job Details:")
+    p.setFont("Helvetica", 12)
+
+    y = height - 2.75 * inch
+    details = [
+        f"Document: {job.get('file_name', 'N/A')}",
+        f"Pages: {job.get('pages', 0)}",
+        f"Paper: {job.get('paper_size', 'N/A')} ({job.get('paper_type', 'Standard')})",
+        f"Color: {'Color' if job.get('color_option') == 'color' else 'Black & White'}",
+    ]
+
+    for detail in details:
+        p.drawString(1.2 * inch, y, detail)
+        y -= 0.25 * inch
+
+    # Payment Info
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(1 * inch, y - 0.25 * inch, "Payment Information:")
+    p.setFont("Helvetica", 12)
+
+    y -= 0.5 * inch
+    payment_details = [
+        f"Payment Status: {job.get('payment_status', 'N/A')}",
+        f"Total Amount: ₱{job.get('total_cost', '0.00')}",
+        f"Paid: {'Yes' if job.get('is_paid') else 'No'}",
+    ]
+
+    for detail in payment_details:
+        p.drawString(1.2 * inch, y, detail)
+        y -= 0.25 * inch
+
+    # Footer
+    p.setFont("Helvetica-Oblique", 10)
+    p.drawString(1 * inch, 0.5 * inch, "Thank you for using QPrint!")
+    p.drawString(1 * inch, 0.25 * inch, "Generated: " + datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+
+    # Create response
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response[
+        'Content-Disposition'] = f'attachment; filename="QPrint_Receipt_{job.get("invoice_number", "receipt")}.pdf"'
+
+    return response

@@ -21,8 +21,12 @@ urlpatterns = [
     path('history/', views.print_job_history, name='print_job_history'),
     path('staff/history/', views.staff_job_history, name='staff_job_history'),
 
+    # NEW: Weekly Overview Report
+    path('reports/weekly-overview/', views.weekly_overview_report, name='weekly_overview_report'),
+
     # Invoice URLs
     path("invoices/", views.invoice_list, name="invoice_list"),
     path("invoices/<uuid:job_id>/", views.view_invoice, name="view_invoice"),
     path("api/check-print-status/<uuid:job_id>/", views.check_print_status, name="check_print_status"),
+    path('receipt/<uuid:job_id>/', views.download_receipt, name='download_receipt'),
 ]
