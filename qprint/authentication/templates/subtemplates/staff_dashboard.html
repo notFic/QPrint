@@ -1,7 +1,7 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
-{% block title %}Staff Dashboard | Q-Print Project{% endblock %}
+{% block title %}Staff Dashboard{% endblock %}
 
 {% block stylesheet %}
 <link rel="stylesheet" href="{% static 'qprint/css/staff_dashboard.css' %}">
@@ -9,13 +9,8 @@
 
 {% block sidebar_links %}
 <a href="{% url 'staff_dashboard' %}" class="active">Print Job Queue</a>
-
-<a href="{% url 'staff_job_history' %}">History Archive</a>
-
+<a href="{% url 'staff_job_history' %}">Completed Print Jobs</a>
 <a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
-
-<a href="{% url 'weekly_overview_report' %}">Weekly Overview</a>
-
 <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
 
@@ -24,15 +19,10 @@
   <h1>Welcome, Staff member {{ user.get_full_name|default:user.username }}</h1>
 
   <div class="card">
-
     <div class="queue-header-row">
         <div class="header-left">
             <h2>Print Job Queue</h2>
-
-            <button type="button" class="btn-sort" onclick="openSortModal()">
-                <span>Filter & Sort</span>
-            </button>
-
+            <button type="button" class="btn-sort" onclick="openSortModal()"><span>Filter & Sort</span></button>
             <div class="sort-tags-container">
                 {% for filter in active_filters %}
                 <div class="active-sort-pill">
@@ -40,7 +30,6 @@
                     <a href="{{ filter.remove_url }}" class="sort-cancel" title="Remove filter">✕</a>
                 </div>
                 {% endfor %}
-
                 {% if active_filters|length > 1 %}
                 <a href="{% url 'staff_dashboard' %}" class="clear-all-link">Clear All</a>
                 {% endif %}
@@ -53,169 +42,177 @@
         <thead>
             <tr>
                 <th>File Name</th>
-                <th>User</th>
-                <th>Uploaded at</th>
-                <th>Document</th>
-                <th>Status</th>
-                <th>Proof of Payment</th>
-                <th>Payment Status</th>
-                <th>Download</th>
-                <th>Notify Print Ready</th>
-                <th>Completion</th>
+                <th>Request Info</th>
+                <th>Specifications</th>
+                <th>Price</th>
+                <th style="text-align:center;">Status</th>
+                <th style="text-align:center;">Payment</th> <th style="text-align:center;">Action</th>
             </tr>
         </thead>
-
         <tbody>
             {% for job in print_jobs %}
             <tr>
                 <td class="filename-cell">
                     <div class="file-wrapper">
-                        {# DELETE X — ENABLED OR DISABLED #}
-                        {% if job.payment_status != "Accepted" %}
-                            <button type="button" class="btn-icon-delete"
-                                    onclick="openDeleteModal('{{ job.id }}', '{{ job.file_name|escapejs }}', '{{ job.username|escapejs }}')"
-                                    title="Delete Job">
-                                ✕
-                            </button>
-                        {% else %}
-                            <span class="btn-icon-delete disabled-x" title="Cannot delete accepted jobs">✕</span>
-                        {% endif %}
+                        <button type="button"
+                                class="btn-icon-delete {% if job.payment_status == 'Accepted' %}disabled-x{% endif %}"
+                                {% if job.payment_status == 'Accepted' %}disabled{% endif %}
+                                onclick="openDeleteModal('{{ job.id }}', '{{ job.file_name|escapejs }}', '{{ job.username|escapejs }}')">
+                            ✕
+                        </button>
 
-                        <span class="file-text" title="{{ job.file_name }}">{{ job.file_name }}</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <a href="#" onclick="openStaffModal('{{ job.id }}')" class="file-text" title="{{ job.file_name }}">
+                                {{ job.file_name }}
+                            </a>
+                            {% if job.payment_status == 'Accepted' %}
+                            <a href="{{ job.file_url }}" download="{{ job.file_name }}" target="_blank" class="download-link">
+                                Download PDF
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
                 </td>
 
-                <td>{{ job.username }}</td>
+                <td>
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-weight:600; color:#374151; font-size:0.9rem;">{{ job.username }}</span>
+                        <span style="font-size:0.75rem; color:#6b7280;">{{ job.submitted_at|date:"M d, H:i" }}</span>
+                    </div>
+                </td>
 
                 <td>
-                    <span title="{{ job.submitted_at }}">
-                        {{ job.submitted_at|date:"Y-m-d H:i"|default:"N/A" }}
-                    </span>
+                    <div class="specs-box">
+                        <span class="spec-main">{{ job.paper_size }}</span>
+                        <span class="spec-sub">{% if job.color_option == 'bw' %}Black & White{% else %}Color{% endif %}</span>
+                        <span class="spec-count">{{ job.pages }} page{{ job.pages|pluralize }}</span>
+                    </div>
+                </td>
+
+                <td style="font-weight: 700; color: #15803d; font-size: 0.95rem;">
+                    ₱{{ job.total_cost }}
                 </td>
 
                 <td style="text-align: center;">
-                    <button type="button" class="btn-secondary btn-small"
-                            onclick="openStaffModal('{{ job.id }}')">
-                        View File
-                    </button>
+                    <span class="badge badge-{{ job.status|lower|slugify }}">{{ job.status }}</span>
                 </td>
 
                 <td>
-                    <span class="badge badge-{{ job.status|lower|slugify }}">
-                        {{ job.status }}
-                    </span>
-                </td>
-
-                <td>
-                    {% if job.payment_proof_url %}
-                        <a href="{{ job.payment_proof_url }}"
-                           class="proof-link"
-                           target="_blank">View Proof</a>
-                    {% else %}
-                        <span style="color:#64748b; font-weight:600;">None</span>
-                    {% endif %}
-                </td>
-
-                <td style="text-align: center;">
-                    <span class="badge badge-{{ job.payment_status|lower|slugify }}">
-                        {{ job.payment_status }}
-                    </span>
-
-                    {# --- ACCEPT/REJECT BUTTONS --- #}
-                    {% if job.payment_proof_url %}
-                        {% if job.payment_status == 'Verifying' or job.payment_status == 'Pending Review' %}
-                        <div style="display:flex; gap:4px; margin-top: 8px; justify-content: center;">
-                            <form method="POST" action="{% url 'staff_update_payment' %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="job_id" value="{{ job.id }}">
-                                <button name="action" value="accept" class="btn-success btn-small">✓ Accept</button>
-                            </form>
-
-                            <form method="POST" action="{% url 'staff_update_payment' %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="job_id" value="{{ job.id }}">
-                                <button name="action" value="reject" class="btn-danger btn-small">✕ Reject</button>
-                            </form>
+                    <div class="payment-cell-grid">
+                        <div class="payment-info">
+                            <span class="badge badge-{{ job.payment_status|lower|slugify }}">{{ job.payment_status }}</span>
+                            {% if job.payment_proof_url %}
+                                <a href="{{ job.payment_proof_url }}" class="proof-link" target="_blank">View Proof</a>
+                            {% endif %}
                         </div>
-                        {% endif %}
-                    {% endif %}
+
+                        <div class="payment-actions">
+                            {% if job.payment_proof_url %}
+                                {% if job.payment_status == 'Verifying' or job.payment_status == 'Pending Review' %}
+                                    <form method="POST" action="{% url 'staff_update_payment' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="job_id" value="{{ job.id }}">
+                                        <button name="action" value="accept" class="btn-xs btn-success">✓ Accept</button>
+                                    </form>
+                                    <form method="POST" action="{% url 'staff_update_payment' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="job_id" value="{{ job.id }}">
+                                        <button name="action" value="reject" class="btn-xs btn-danger">✕ Reject</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
                 </td>
 
                 <td style="text-align: center;">
-                    {% if job.payment_status == 'Accepted' %}
-                        <a href="{{ job.file_url }}"
-                           download="{{ job.file_name }}"
-                           target="_blank"
-                           class="btn-download"
-                           title="Download File">
-                           ⬇
-                        </a>
-                    {% else %}
-                        <span class="btn-download disabled" title="Payment not accepted">⬇</span>
-                    {% endif %}
-                </td>
-
-                <td>
-                    <form method="POST" action="{% url 'staff_confirm_job' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="job_id" value="{{ job.id }}">
-
-                        {% if job.status == 'Ready' %}
-                            <button class="btn-secondary btn-small" style="width: 100%; background-color: #fff7ed; color: #c2410c; border-color: #fdba74;"
-                                title="Send pickup reminder email">
-                                🔔 Remind
-                            </button>
-                        {% else %}
-                            <button class="btn-primary btn-small" style="width: 100%;"
-                                {% if job.payment_status != "Accepted" or job.status == "Completed" %}disabled{% endif %}>
-                                🔔 Notify User
-                            </button>
-                        {% endif %}
-                    </form>
-                </td>
-
-                <td>
-                    <form method="POST" action="{% url 'staff_complete_job' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="job_id" value="{{ job.id }}">
-
-                        {% if job.status == 'Completed' %}
-                            <button name="action" value="unmark_completed" class="btn-secondary btn-small">
-                                Undo Complete
-                            </button>
-                        {% elif job.status == 'Ready' %}
-                            <button name="action" value="mark_completed" class="btn-success btn-small">
-                                Mark Completed
-                            </button>
-                        {% else %}
-                            <button disabled class="btn-secondary btn-small" style="opacity: 0.5;">
-                                Pending Print
-                            </button>
-                        {% endif %}
-                    </form>
+                    <button class="btn-primary btn-small" onclick="openStaffModal('{{ job.id }}')">
+                        View
+                    </button>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <p class="muted" style="margin-top:20px;">No print jobs found matching filters.</p>
+      <p class="muted" style="margin-top:20px;">No active print jobs found.</p>
     {% endif %}
   </div>
 
   <div id="staffModal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="closeStaffModal()">×</span>
+
         <div class="modal-header-row">
             <h2 id="modal-filename">...</h2>
-            <div class="specs-badge">
-                <span class="specs-label">SPECS:</span>
-                <span id="modal-specs-text">...</span>
-                <span class="specs-separator">|</span>
-                <span class="specs-price">TOTAL: ₱<span id="modal-price-text">0.00</span></span>
+        </div>
+
+        <div class="staff-modal-body">
+            <div class="modal-preview">
+                <iframe id="pdfPreview" width="100%" height="100%"></iframe>
+            </div>
+
+            <div class="modal-controls">
+
+                <div class="control-group">
+                    <h3>Job Specifications</h3>
+                    <div class="spec-grid">
+                        <div class="spec-row"><span class="label">Pages:</span> <span id="modal-pages" class="val"></span></div>
+                        <div class="spec-row"><span class="label">Size:</span> <span id="modal-size" class="val"></span></div>
+                        <div class="spec-row"><span class="label">Type:</span> <span id="modal-type" class="val"></span></div>
+                        <div class="spec-row"><span class="label">Color:</span> <span id="modal-color" class="val"></span></div>
+                        <div class="spec-row price-row"><span class="label">Total:</span> <span id="modal-price" class="val price"></span></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Payment Status</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span id="modal-payment-badge" class="badge"></span>
+                        <a id="modal-proof-link" href="#" target="_blank" class="proof-btn" style="display:none;">View Proof</a>
+                    </div>
+
+                    <div id="modal-payment-actions" style="display:none;">
+                        <div style="display:flex; gap:10px;">
+                            <form method="POST" action="{% url 'staff_update_payment' %}" style="flex:1;">
+                                {% csrf_token %}
+                                <input type="hidden" name="job_id" id="payment-action-id">
+                                <button name="action" value="accept" class="btn-success btn-full">✓ Accept Payment</button>
+                            </form>
+                            <form method="POST" action="{% url 'staff_update_payment' %}" style="flex:1;">
+                                {% csrf_token %}
+                                <input type="hidden" name="job_id" id="reject-action-id">
+                                <button name="action" value="reject" class="btn-danger btn-full">✕ Reject</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Notification</h3>
+                    <form method="POST" action="{% url 'staff_confirm_job' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="job_id" id="notify-action-id">
+                        <button id="btn-notify" class="btn-primary btn-full" disabled>🔔 Notify User</button>
+                        <button id="btn-remind" class="btn-secondary btn-full" style="display:none; background-color:#fff7ed; color:#c2410c; border:1px solid #fdba74;">🔔 Remind User</button>
+                    </form>
+                </div>
+
+                <div class="control-group">
+                    <h3>Completion</h3>
+                    <form method="POST" action="{% url 'staff_complete_job' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="job_id" id="complete-action-id">
+                        <button id="btn-complete" name="action" value="mark_completed" class="btn-success btn-full" disabled>✅ Mark as Completed</button>
+                    </form>
+                </div>
+
+                <div class="control-group" style="border:none;">
+                    <a id="modal-download-link" href="#" download class="btn-secondary btn-full" style="text-align:center; text-decoration:none;">⬇ Download File</a>
+                </div>
+
             </div>
         </div>
-        <div class="modal-preview"><iframe id="pdfPreview" width="100%" height="100%"></iframe></div>
     </div>
   </div>
 
@@ -225,61 +222,19 @@
             <h3 style="margin:0;">Configure View</h3>
             <span class="close" onclick="closeSortModal()" style="position:static;">×</span>
         </div>
-
         <div class="sort-grid">
             <div class="sort-category">
                 <h4>Primary Sort Order</h4>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="newest" data-group="order" {% if 'newest' in current_sorts %}checked{% endif %}>
-                    Newest First
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="oldest" data-group="order" {% if 'oldest' in current_sorts %}checked{% endif %}>
-                    Oldest First
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="user_az" data-group="order" {% if 'user_az' in current_sorts %}checked{% endif %}>
-                    User (A-Z)
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="largest_job" data-group="order" {% if 'largest_job' in current_sorts %}checked{% endif %}>
-                    Largest (Pages)
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="smallest_job" data-group="order" {% if 'smallest_job' in current_sorts %}checked{% endif %}>
-                    Smallest (Pages)
-                </label>
+                <label class="sort-option-label"><input type="checkbox" name="sort" value="newest" data-group="order" {% if 'newest' in current_sorts %}checked{% endif %}> Newest First</label>
+                <label class="sort-option-label"><input type="checkbox" name="sort" value="oldest" data-group="order" {% if 'oldest' in current_sorts %}checked{% endif %}> Oldest First</label>
+                <label class="sort-option-label"><input type="checkbox" name="sort" value="user_az" data-group="order" {% if 'user_az' in current_sorts %}checked{% endif %}> User (A-Z)</label>
             </div>
-
             <div class="sort-category">
                 <h4>Status Filter</h4>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="pending_payment" data-group="status" {% if 'pending_payment' in current_sorts %}checked{% endif %}>
-                    Verifying Only
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="ready_print" data-group="status" {% if 'ready_print' in current_sorts %}checked{% endif %}>
-                    Ready to Print
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="unpaid" data-group="status" {% if 'unpaid' in current_sorts %}checked{% endif %}>
-                    Unpaid / Overdue
-                </label>
-            </div>
-
-            <div class="sort-category">
-                <h4>Specs Filter</h4>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="color_only" data-group="specs" {% if 'color_only' in current_sorts %}checked{% endif %}>
-                    Color Jobs Only
-                </label>
-                <label class="sort-option-label">
-                    <input type="checkbox" name="sort" value="paper_glossy" data-group="specs" {% if 'paper_glossy' in current_sorts %}checked{% endif %}>
-                    Glossy Paper
-                </label>
+                <label class="sort-option-label"><input type="checkbox" name="sort" value="pending_payment" data-group="status" {% if 'pending_payment' in current_sorts %}checked{% endif %}> Verifying Only</label>
+                <label class="sort-option-label"><input type="checkbox" name="sort" value="ready_print" data-group="status" {% if 'ready_print' in current_sorts %}checked{% endif %}> Ready to Print</label>
             </div>
         </div>
-
         <div class="sort-footer">
             <a href="{% url 'staff_dashboard' %}" class="btn-secondary" style="text-decoration:none; text-align:center;">Reset Default</a>
             <button type="submit" class="btn-primary">Apply Changes</button>
@@ -293,12 +248,10 @@
         <div style="text-align: center;">
             <div style="font-size: 3.5rem; margin-bottom: 10px; color: #dc2626; font-weight: bold; line-height: 1;">✕</div>
             <h2 style="color: #dc2626; margin-bottom: 10px;">Delete File?</h2>
-            <p style="color: #4b5563; margin-bottom: 20px;">Are you sure you want to permanently delete <br><strong id="delete-filename">...</strong> from <strong id="delete-username">...</strong>?</p>
-            <p class="muted" style="font-size: 0.9rem; margin-bottom: 8px;">This action cannot be undone. Type <strong>"yes"</strong> to confirm.</p>
-            <input type="text" id="delete-confirm-input" placeholder="Type 'yes'" class="delete-input">
             <form method="POST" action="{% url 'staff_delete_job' %}" id="deleteForm">
                 {% csrf_token %}
                 <input type="hidden" name="job_id" id="delete-job-id">
+                <input type="text" id="delete-confirm-input" placeholder="Type 'yes'" class="delete-input">
                 <button type="submit" id="confirm-delete-btn" class="btn-danger" disabled style="width: 100%; margin-top: 15px; opacity: 0.5; cursor: not-allowed;">Delete Permanently</button>
             </form>
         </div>
@@ -308,47 +261,86 @@
 </div>
 
 <script>
-// --- Preview Modal ---
 function openStaffModal(jobId) {
     fetch(`/api/job/${jobId}/`)
     .then(r => r.json())
     .then(job => {
         document.getElementById('modal-filename').textContent = job.file_name;
-        const specs = `${job.pages} pages  •  ${job.paper_size}  •  ${job.color_label}  •  ${job.paper_type_label}`;
-        document.getElementById('modal-specs-text').textContent = specs;
-        document.getElementById('modal-price-text').textContent = job.total_cost;
-        document.getElementById('pdfPreview').src = job.file_url;
-        document.getElementById('staffModal').style.display = "flex";
-    })
-    .catch(err => alert("Error loading job details"));
-}
-function closeStaffModal() { document.getElementById('staffModal').style.display = "none"; }
+        document.getElementById('modal-pages').textContent = `${job.pages} page${job.pages > 1 ? 's' : ''}`;
+        document.getElementById('modal-size').textContent = job.paper_size;
+        document.getElementById('modal-type').textContent = job.paper_type_label;
+        document.getElementById('modal-color').textContent = job.color_option === 'bw' ? 'Black & White' : 'Colored';
+        document.getElementById('modal-price').textContent = `₱${job.total_cost}`;
 
-// --- Sort Modal ---
+        document.getElementById('pdfPreview').src = job.file_url;
+        document.getElementById('modal-download-link').href = job.file_url;
+        document.getElementById('modal-download-link').download = job.file_name;
+
+        document.getElementById('payment-action-id').value = jobId;
+        document.getElementById('reject-action-id').value = jobId;
+        document.getElementById('notify-action-id').value = jobId;
+        document.getElementById('complete-action-id').value = jobId;
+
+        const pBadge = document.getElementById('modal-payment-badge');
+        pBadge.textContent = job.payment_status;
+        pBadge.className = `badge badge-${job.payment_status.toLowerCase().replace(/\s+/g, '-')}`;
+
+        const proofLink = document.getElementById('modal-proof-link');
+        const payActions = document.getElementById('modal-payment-actions');
+
+        if (job.payment_status === 'Accepted') {
+            document.getElementById('modal-download-link').href = job.file_url;
+            document.getElementById('modal-download-link').download = job.file_name;
+            document.getElementById('modal-download-link').style.pointerEvents = 'auto';
+            document.getElementById('modal-download-link').style.opacity = '1';
+            document.getElementById('modal-download-link').style.cursor = 'pointer';
+        } else {
+            document.getElementById('modal-download-link').href = '#';
+            document.getElementById('modal-download-link').removeAttribute('download');
+            document.getElementById('modal-download-link').style.pointerEvents = 'none';
+            document.getElementById('modal-download-link').style.opacity = '0.5';
+            document.getElementById('modal-download-link').style.cursor = 'not-allowed';
+        }
+
+        if (job.payment_proof_url) {
+            proofLink.href = job.payment_proof_url;
+            proofLink.style.display = 'block';
+            if (['Pending Review', 'Verifying'].includes(job.payment_status)) {
+                payActions.style.display = 'block';
+            } else {
+                payActions.style.display = 'none';
+            }
+        } else {
+            proofLink.style.display = 'none';
+            payActions.style.display = 'none';
+        }
+
+        const notifyBtn = document.getElementById('btn-notify');
+        const remindBtn = document.getElementById('btn-remind');
+        if (job.status === 'Ready') {
+            notifyBtn.style.display = 'none';
+            remindBtn.style.display = 'block';
+        } else {
+            remindBtn.style.display = 'none';
+            notifyBtn.style.display = 'block';
+            notifyBtn.disabled = (job.payment_status !== 'Accepted');
+        }
+
+        const completeBtn = document.getElementById('btn-complete');
+        completeBtn.disabled = (job.status !== 'Ready');
+
+        document.getElementById('staffModal').style.display = "flex";
+    });
+}
+
+function closeStaffModal() { document.getElementById('staffModal').style.display = "none"; }
 function openSortModal() { document.getElementById('sortModal').style.display = "flex"; }
 function closeSortModal() { document.getElementById('sortModal').style.display = "none"; }
-
-// --- Delete Modal ---
 function openDeleteModal(jobId, fileName, username) {
     document.getElementById('delete-job-id').value = jobId;
-    document.getElementById('delete-filename').textContent = fileName;
-    document.getElementById('delete-username').textContent = username;
-    const input = document.getElementById('delete-confirm-input');
-    const btn = document.getElementById('confirm-delete-btn');
-    input.value = ""; btn.disabled = true; btn.style.opacity = "0.5"; btn.style.cursor = "not-allowed";
     document.getElementById('deleteModal').style.display = "flex";
-    input.focus();
 }
 function closeDeleteModal() { document.getElementById('deleteModal').style.display = "none"; }
-
-document.getElementById('delete-confirm-input').addEventListener('input', function(e) {
-    const btn = document.getElementById('confirm-delete-btn');
-    if (e.target.value.toLowerCase() === 'yes') {
-        btn.disabled = false; btn.style.opacity = "1"; btn.style.cursor = "pointer";
-    } else {
-        btn.disabled = true; btn.style.opacity = "0.5"; btn.style.cursor = "not-allowed";
-    }
-});
 
 window.onclick = function(e) {
     if (e.target === document.getElementById('staffModal')) closeStaffModal();
@@ -356,7 +348,6 @@ window.onclick = function(e) {
     if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
 }
 
-// --- Checkbox Radio Logic for Sort Algorithm ---
 document.addEventListener('DOMContentLoaded', () => {
     const sortInputs = document.querySelectorAll('input[name="sort"]');
     sortInputs.forEach(input => {
@@ -373,6 +364,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    const delInput = document.getElementById('delete-confirm-input');
+    if(delInput){
+        delInput.addEventListener('input', function(e) {
+            const btn = document.getElementById('confirm-delete-btn');
+            if (e.target.value.toLowerCase() === 'yes') {
+                btn.disabled = false; btn.style.opacity = "1"; btn.style.cursor = "pointer";
+            } else {
+                btn.disabled = true; btn.style.opacity = "0.5"; btn.style.cursor = "not-allowed";
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

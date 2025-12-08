@@ -10,7 +10,7 @@
 
 {% block sidebar_links %}
 <a href="{% url 'staff_dashboard' %}">Print Job Queue</a>
-<a href="{% url 'staff_job_history' %}" class="active">History Archive</a>
+<a href="{% url 'staff_job_history' %}" class="active">Completed Print Jobs</a>
 <a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
 <a href="{% url 'weekly_overview_report' %}">Weekly Overview</a>
 <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
@@ -18,7 +18,7 @@
 
 {% block main_content %}
 <div class="container">
-    <h1>Global Print Job Archive</h1>
+    <h1>Completed Print Job Archive</h1>
 
     <div class="completed-jobs-grid">
 

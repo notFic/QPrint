@@ -403,7 +403,7 @@ function openModal(jobId) {
       document.getElementById('bd-paper-size').textContent = `${job.paper_size_label} (₱${job.paper_size_cost})`;
       document.getElementById('bd-print-type').textContent = `${job.color_label} (₱${job.color_cost})`;
       document.getElementById('bd-pages').textContent = `${job.pages} pages`;
-      document.getElementById('bd-formula').textContent = `${job.paper_type_cost} + ${job.paper_size_cost} + ${job.color_cost} + (${job.color_cost} × ${job.pages})`;
+      document.getElementById('bd-formula').textContent = `(${job.paper_type_cost} + ${job.paper_size_cost} + ${job.color_cost}) × ${job.pages}`;
 
       // 3. Status Badge
       const status = job.status;
