@@ -36,8 +36,8 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'qprint.onrender.com']
 # Application definition
 
 INSTALLED_APPS = [
-    'authentication',
-    'payments',
+    'qprint.authentication',
+    'qprint.payments',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -57,7 +57,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
-ROOT_URLCONF = 'qprint.urls'
+ROOT_URLCONF = 'qprint.qprint.urls'
 
 TEMPLATES = [
     {
@@ -124,7 +124,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/' 
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
