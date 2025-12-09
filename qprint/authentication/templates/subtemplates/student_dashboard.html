@@ -65,7 +65,7 @@
                 <div class="history-main">
                   <strong>{{ job.file_name }}</strong>
                   <small data-date="{{ job.submitted_at }}">
-                    {{ job.submitted_at|slice:":10" }} {{ job.submitted_at|slice:"11:16" }}
+                    {{ job.submitted_at|slice:":10" }}
                   </small>
                 </div>
                 <span class="status-badge status-{{ job.status|lower|slugify }}">{{ job.status }}</span>
@@ -73,7 +73,7 @@
 
             {% if job.status == 'Cancelled' %}
             <button type="button" class="btn-delete-row"
-                    title="Remove from history"
+                    title="Remove cancelled job from active view"
                     onclick="triggerConfirmation('delete_history', '{{ job.id }}', '{{ job.file_name|escapejs }}')"
                     style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;">
                 ✕
@@ -511,8 +511,8 @@ function triggerConfirmation(type, jobId, fileName) {
         inputAction.value = "cancel_job";
 
     } else if (type === 'delete_history') {
-        title.textContent = "Delete from History?";
-        message.innerHTML = `Are you sure you want to remove <br><strong>${fileName}</strong> from your history?`;
+        title.textContent = "Remove Cancelled Job?";
+        message.innerHTML = `Are you sure you want to remove <br><strong>${fileName}</strong> from active jobs?<br><small>(It will still appear in your invoices)</small>`;
 
         form.action = "{% url 'student_delete_job' %}";
         inputAction.disabled = true;
