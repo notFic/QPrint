@@ -1,170 +1,150 @@
 {% extends "dashboard_base.html" %}
 {% load static %}
 
-{% block title %}Weekly Overview | Q-Print Project{% endblock %}
+{% block title %}Analytics Dashboard | Q-Print Project{% endblock %}
 
 {% block stylesheet %}
-<link rel="stylesheet" href="{% static 'qprint/css/staff_dashboard.css' %}">
-<link rel="stylesheet" href="{% static 'qprint/css/weekly_overview.css' %}">
-<!-- Include Chart.js for the line chart -->
+<link rel="stylesheet" href="{% static 'qprint/css/analytics_dashboard.css' %}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-    /* Ensure the dropdown is styled properly */
-    .week-selector-container {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
-    .week-select-label {
-        font-weight: 600;
-        color: #374151;
-        font-size: 0.9rem;
-    }
-
-    .week-select {
-        padding: 8px 16px;
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-        background: white;
-        font-size: 0.875rem;
-        color: #374151;
-        min-width: 200px;
-        cursor: pointer;
-        transition: border-color 0.2s;
-    }
-
-    .week-select:hover {
-        border-color: #9ca3af;
-    }
-
-    .week-select:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-</style>
 {% endblock %}
 
 {% block sidebar_links %}
 <a href="{% url 'staff_dashboard' %}">Print Job Queue</a>
 <a href="{% url 'staff_job_history' %}">History Archive</a>
-<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
-<a href="{% url 'weekly_overview_report' %}" class="active">Weekly Overview</a>
+<a href="{% url 'analytics_dashboard' %}" class="active">Analytics Dashboard</a>
 <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
 
 {% block main_content %}
 <div class="container">
-    <div class="week-navigation">
-        <div class="week-controls">
-            <a href="?week={{ prev_week }}" class="nav-btn">
-                <span class="nav-icon">←</span> Previous Week
+    <!-- Period Type Selector -->
+    <div class="period-type-selector">
+        <div class="period-tabs">
+            <button class="period-tab {% if period_type == 'weekly' %}active{% endif %}"
+                    onclick="window.location.href='?period=weekly'">
+                Weekly View
+            </button>
+            <button class="period-tab {% if period_type == 'monthly' %}active{% endif %}"
+                    onclick="window.location.href='?period=monthly'">
+                Monthly View
+            </button>
+        </div>
+
+        <div class="period-quick-stats">
+            <div class="quick-stat">
+                <span class="stat-label">Today</span>
+                <span class="stat-value">{{ today_revenue }}</span>
+            </div>
+            <div class="quick-stat">
+                <span class="stat-label">This Month</span>
+                <span class="stat-value">{{ month_revenue }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Period Navigation -->
+    <div class="period-navigation">
+        <div class="period-controls">
+            <a href="?period={{ period_type }}&offset={{ prev_offset }}" class="nav-btn">
+                <span class="nav-icon">←</span> Previous {{ period_type|title }}
             </a>
 
-            {% if not is_current_week %}
-            <a href="?week=0" class="current-week-btn">
-                Current Week
+            {% if not is_current_period %}
+            <a href="?period={{ period_type }}&offset=0" class="current-period-btn">
+                Current {{ period_type|title }}
             </a>
             {% endif %}
         </div>
 
-        <div class="week-display">
-            Week {{ week_number }}
-            <span class="week-badge">{{ current_year }}</span>
+        <div class="period-display">
+            {{ period_label }}
+            <span class="period-badge">{{ period_range }}</span>
         </div>
 
-        <div class="week-controls">
-            <a href="?week={{ next_week }}" class="nav-btn">
-                Next Week <span class="nav-icon">→</span>
+        <div class="period-controls">
+            <!-- DISABLE next button when at current period -->
+            <a href="?period={{ period_type }}&offset={{ next_offset }}"
+               class="nav-btn {% if is_current_period %}disabled{% endif %}"
+               {% if is_current_period %}onclick="return false;"{% endif %}>
+                Next {{ period_type|title }} <span class="nav-icon">→</span>
             </a>
         </div>
     </div>
 
-    <!-- Week Selector Dropdown -->
-    <div class="week-selector-container">
-        <span class="week-select-label">Jump to week:</span>
-        <select class="week-select" id="weekSelect" onchange="window.location.href='?week=' + this.value">
-            <option value="0" {% if week_offset == 0 %}selected{% endif %}>This Week (Current)</option>
-            <option value="-1" {% if week_offset == -1 %}selected{% endif %}>Last Week</option>
-            <option value="-2" {% if week_offset == -2 %}selected{% endif %}>2 Weeks Ago</option>
-            <option value="-3" {% if week_offset == -3 %}selected{% endif %}>3 Weeks Ago</option>
-            <option value="-4" {% if week_offset == -4 %}selected{% endif %}>4 Weeks Ago</option>
-            <option value="-5" {% if week_offset == -5 %}selected{% endif %}>5 Weeks Ago</option>
-            <option value="1" {% if week_offset == 1 %}selected{% endif %}>Next Week</option>
-            <option value="2" {% if week_offset == 2 %}selected{% endif %}>In 2 Weeks</option>
-            <option value="3" {% if week_offset == 3 %}selected{% endif %}>In 3 Weeks</option>
-            <option value="4" {% if week_offset == 4 %}selected{% endif %}>In 4 Weeks</option>
+    <!-- Period Selector - PAST ONLY -->
+    <div class="period-selector-container">
+        <span class="period-select-label">View past:</span>
+        <select class="period-select" id="periodOffsetSelect" onchange="window.location.href='?period={{ period_type }}&offset=' + this.value">
+            <option value="0" {% if period_offset == 0 %}selected{% endif %}>Current {{ period_type|title }}</option>
+            <option value="-1" {% if period_offset == -1 %}selected{% endif %}>Last {{ period_type|title }}</option>
+            <option value="-2" {% if period_offset == -2 %}selected{% endif %}>2 {{ period_type|title }}s Ago</option>
+            <option value="-3" {% if period_offset == -3 %}selected{% endif %}>3 {{ period_type|title }}s Ago</option>
+            <option value="-4" {% if period_offset == -4 %}selected{% endif %}>4 {{ period_type|title }}s Ago</option>
+            <option value="-5" {% if period_offset == -5 %}selected{% endif %}>5 {{ period_type|title }}s Ago</option>
+            <option value="-6" {% if period_offset == -6 %}selected{% endif %}>6 {{ period_type|title }}s Ago</option>
+            <option value="-7" {% if period_offset == -7 %}selected{% endif %}>7 {{ period_type|title }}s Ago</option>
+            <option value="-8" {% if period_offset == -8 %}selected{% endif %}>8 {{ period_type|title }}s Ago</option>
         </select>
     </div>
 
-    <div class="week-info-bar">
-        <div class="week-dates">
-            <strong>{{ week_start }} to {{ week_end }}</strong>
-        </div>
-        <div class="week-total">
-            {{ total_jobs }} job{{ total_jobs|pluralize }} • {{ total_revenue }}
-        </div>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <h3>Total Print Jobs</h3>
-            <div class="stat-value">{{ total_jobs }}</div>
-            <div class="stat-subtitle">Across all 7 days</div>
-        </div>
-
-        <div class="stat-card">
+    <!-- Revenue Summary Card -->
+    <div class="revenue-summary-card">
+        <div class="revenue-main">
             <h3>Total Revenue</h3>
-            <div class="stat-value">{{ total_revenue }}</div>
-            <div class="stat-subtitle">From paid jobs</div>
+            <div class="revenue-value">{{ total_revenue }}</div>
+            <div class="revenue-change {% if revenue_change_raw > 0 %}positive{% elif revenue_change_raw < 0 %}negative{% endif %}">
+                {{ revenue_change }} vs previous {{ period_type }}
+            </div>
         </div>
-
-        <div class="stat-card">
-            <h3>Busiest Day</h3>
-            <div class="stat-value">{{ busiest_day }}</div>
-            <div class="stat-subtitle">{{ busiest_count }} job{{ busiest_count|pluralize }} ({{ busiest_revenue }})</div>
-        </div>
-
-        <div class="stat-card">
-            <h3>Least Busy Day</h3>
-            <div class="stat-value">{{ least_busy_day }}</div>
-            <div class="stat-subtitle">{{ least_busy_count }} job{{ least_busy_count|pluralize }} ({{ least_busy_revenue }})</div>
+        <div class="revenue-breakdown">
+            <div class="breakdown-item">
+                <span class="breakdown-label">Total Print Jobs</span>
+                <span class="breakdown-value">{{ total_jobs }}</span>
+            </div>
+            <div class="breakdown-item">
+                <span class="breakdown-label">Busiest Period</span>
+                <span class="breakdown-value">{{ busiest_period }} ({{ busiest_count }} jobs)</span>
+            </div>
+            <div class="breakdown-item">
+                <span class="breakdown-label">Least Busy Period</span>
+                <span class="breakdown-value">{{ least_busy_period }} ({{ least_busy_count }} jobs)</span>
+            </div>
         </div>
     </div>
 
-    <div class="chart-container">
-        <div class="chart-header">
-            <h2 class="chart-title">Print Jobs Per Day</h2>
-            <span class="week-range">{{ date_range }}</span>
-        </div>
-
-        <div class="tabs">
-            <button class="tablink active" onclick="openTab(event, 'jobsTab')">Print Jobs</button>
-            <button class="tablink" onclick="openTab(event, 'revenueTab')">Revenue</button>
-        </div>
-
-        {% if total_jobs > 0 %}
-        <div id="jobsTab" class="tabcontent active">
-            <div class="chart-wrapper">
-                <canvas id="jobsChart"></canvas>
+    <!-- Charts Container -->
+    <div class="charts-container">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h2 class="chart-title">Print Jobs Per {% if period_type == 'weekly' %}Day{% else %}Week{% endif %}</h2>
+                <span class="period-range">{{ period_range }}</span>
             </div>
-        </div>
 
-        <div id="revenueTab" class="tabcontent">
-            <div class="chart-wrapper">
-                <canvas id="revenueChart"></canvas>
+            <div class="tabs">
+                <button class="tablink active" onclick="openTab(event, 'jobsTab')">Print Jobs</button>
+                <button class="tablink" onclick="openTab(event, 'revenueTab')">Revenue</button>
             </div>
+
+            {% if total_jobs > 0 %}
+            <div id="jobsTab" class="tabcontent active">
+                <div class="chart-wrapper">
+                    <canvas id="jobsChart"></canvas>
+                </div>
+            </div>
+
+            <div id="revenueTab" class="tabcontent">
+                <div class="chart-wrapper">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+            {% else %}
+            <div class="no-data-message">
+                <h3>No Print Jobs This {{ period_type|title }}</h3>
+                <p>There are no print jobs recorded for {{ period_label }} ({{ period_range }}).</p>
+                <p>Try viewing a different period or check the print job queue for current submissions.</p>
+            </div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="no-data-message">
-            <h3>No Print Jobs This Week</h3>
-            <p>There are no print jobs recorded for the selected week ({{ date_range }}).</p>
-            <p>Try viewing a different week or check the print job queue for current submissions.</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 
@@ -173,11 +153,14 @@
     // Pass data directly to JavaScript
     window.chartData = {
         labels: {{ chart_labels|safe }},
-        jobs: {{ chart_data|safe }},
+        jobs: {{ jobs_data|safe }},
         revenue: {{ revenue_data|safe }},
-        weekNumber: {{ week_number }},
-        isCurrentWeek: {% if is_current_week %}true{% else %}false{% endif %},
-        weekOffset: {{ week_offset }}
+        periodType: "{{ period_type }}",
+        periodLabel: "{{ period_label }}",
+        periodOffset: {{ period_offset }},
+        isCurrentPeriod: {% if is_current_period %}true{% else %}false{% endif %},
+        totalJobs: {{ total_jobs }},
+        totalRevenue: {{ raw_total_revenue }}
     };
 </script>
 {% endblock %}
@@ -208,14 +191,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const chartLabels = window.chartData.labels || [];
     const chartJobs = window.chartData.jobs || [];
     const chartRevenue = window.chartData.revenue || [];
-    const weekNumber = window.chartData.weekNumber;
-    const isCurrentWeek = window.chartData.isCurrentWeek;
+    const periodType = window.chartData.periodType;
+    const periodLabel = window.chartData.periodLabel;
+    const periodOffset = window.chartData.periodOffset;
+    const isCurrentPeriod = window.chartData.isCurrentPeriod;
+    const totalJobs = window.chartData.totalJobs;
+    const totalRevenue = window.chartData.totalRevenue;
 
     // Check if we have valid data
     if (chartLabels.length === 0 || chartJobs.length === 0) {
         console.error('No chart data available');
         return;
     }
+
+    // Determine chart type based on period
+    const xAxisLabel = periodType === 'weekly' ? 'Day of the Week' : 'Week of the Month';
 
     // Jobs Chart
     const jobsCanvas = document.getElementById('jobsChart');
@@ -226,33 +216,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const jobsCtx = jobsCanvas.getContext('2d');
 
-    // Prepare data with highlight for today (only if current week)
+    // Prepare data with appropriate colors
     const backgroundColors = [];
     const borderColors = [];
 
-    if (isCurrentWeek) {
-        // Only highlight today if viewing current week
-        const today = new Date();
-        const todayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1; // Convert to 0-6 where 0=Monday
-
-        chartLabels.forEach((_, index) => {
-            if (index === todayIndex) {
-                // Today - highlighted
-                backgroundColors.push('rgba(59, 130, 246, 0.2)');
-                borderColors.push('#2563eb');
-            } else {
-                // Other days
-                backgroundColors.push('rgba(59, 130, 246, 0.1)');
-                borderColors.push('#3b82f6');
-            }
-        });
-    } else {
-        // For past/future weeks, use standard colors
-        chartLabels.forEach(() => {
-            backgroundColors.push('rgba(59, 130, 246, 0.1)');
-            borderColors.push('#3b82f6');
-        });
-    }
+    chartLabels.forEach((_, index) => {
+        // Use blue gradient
+        backgroundColors.push('rgba(59, 130, 246, 0.1)');
+        borderColors.push('#3b82f6');
+    });
 
     try {
         const jobsChart = new Chart(jobsCtx, {
@@ -292,9 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return `Print Jobs: ${context.parsed.y}`;
                             },
                             title: function(tooltipItems) {
-                                // Add week info to tooltip title
-                                const dayName = tooltipItems[0].label;
-                                return `${dayName} (Week ${weekNumber})`;
+                                return `${tooltipItems[0].label} (${periodLabel})`;
                             }
                         }
                     }
@@ -307,11 +277,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             drawBorder: false
                         },
                         ticks: {
-                            font: {
-                                size: 12
-                            },
+                            font: { size: 12 },
                             precision: 0,
-                            stepSize: 1
+                            stepSize: Math.max(1, Math.ceil(Math.max(...chartJobs) / 5))
                         },
                         title: {
                             display: true,
@@ -328,13 +296,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             drawBorder: false
                         },
                         ticks: {
-                            font: {
-                                size: 12
-                            }
+                            font: { size: 12 }
                         },
                         title: {
                             display: true,
-                            text: 'Day of the Week',
+                            text: xAxisLabel,
                             font: {
                                 size: 14,
                                 weight: 'bold'
@@ -365,29 +331,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const revenueBackgroundColors = [];
     const revenueBorderColors = [];
 
-    if (isCurrentWeek) {
-        // Only highlight today if viewing current week
-        const today = new Date();
-        const todayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
-
-        chartLabels.forEach((_, index) => {
-            if (index === todayIndex) {
-                // Today - highlighted
-                revenueBackgroundColors.push('rgba(16, 185, 129, 0.2)');
-                revenueBorderColors.push('#047857');
-            } else {
-                // Other days
-                revenueBackgroundColors.push('rgba(16, 185, 129, 0.1)');
-                revenueBorderColors.push('#10b981');
-            }
-        });
-    } else {
-        // For past/future weeks, use standard colors
-        chartLabels.forEach(() => {
-            revenueBackgroundColors.push('rgba(16, 185, 129, 0.1)');
-            revenueBorderColors.push('#10b981');
-        });
-    }
+    chartLabels.forEach((_, index) => {
+        // Use green gradient
+        revenueBackgroundColors.push('rgba(16, 185, 129, 0.1)');
+        revenueBorderColors.push('#10b981');
+    });
 
     try {
         const revenueChart = new Chart(revenueCtx, {
@@ -427,9 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return `Revenue: ₱${context.parsed.y.toFixed(2)}`;
                             },
                             title: function(tooltipItems) {
-                                // Add week info to tooltip title
-                                const dayName = tooltipItems[0].label;
-                                return `${dayName} (Week ${weekNumber})`;
+                                return `${tooltipItems[0].label} (${periodLabel})`;
                             }
                         }
                     }
@@ -442,11 +388,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             drawBorder: false
                         },
                         ticks: {
-                            font: {
-                                size: 12
-                            },
+                            font: { size: 12 },
                             callback: function(value) {
-                                return '₱' + value.toFixed(2);
+                                return '₱' + value.toFixed(0);
                             }
                         },
                         title: {
@@ -464,13 +408,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             drawBorder: false
                         },
                         ticks: {
-                            font: {
-                                size: 12
-                            }
+                            font: { size: 12 }
                         },
                         title: {
                             display: true,
-                            text: 'Day of the Week',
+                            text: xAxisLabel,
                             font: {
                                 size: 14,
                                 weight: 'bold'
@@ -488,20 +430,26 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error creating revenue chart:', error);
     }
 
-    // Keyboard navigation for weeks
+    // Keyboard navigation for period navigation
     document.addEventListener('keydown', function(e) {
-        const prevWeek = {{ prev_week }};
-        const nextWeek = {{ next_week }};
+        const prevOffset = {{ prev_offset }};
+        const nextOffset = {{ next_offset }};
 
         if (e.key === 'ArrowLeft') {
-            // Navigate to previous week
-            window.location.href = '?week=' + prevWeek;
-        } else if (e.key === 'ArrowRight') {
-            // Navigate to next week
-            window.location.href = '?week=' + nextWeek;
+            // Navigate to previous period
+            window.location.href = `?period=${periodType}&offset=${prevOffset}`;
+        } else if (e.key === 'ArrowRight' && periodOffset < 0) {
+            // Navigate to next period if not at current
+            window.location.href = `?period=${periodType}&offset=${nextOffset}`;
         } else if (e.key === 'Home' || (e.ctrlKey && e.key === 'ArrowLeft')) {
-            // Navigate to current week
-            window.location.href = '?week=0';
+            // Navigate to current period
+            window.location.href = `?period=${periodType}&offset=0`;
+        } else if (e.key === 'w' || e.key === 'W') {
+            // Switch to weekly view
+            window.location.href = `?period=weekly&offset=${periodOffset}`;
+        } else if (e.key === 'm' || e.key === 'M') {
+            // Switch to monthly view
+            window.location.href = `?period=monthly&offset=${periodOffset}`;
         }
     });
 });

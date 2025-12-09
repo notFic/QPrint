@@ -422,33 +422,43 @@ def staff_dashboard(request):
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .neq('status', 'Completed') \
+        .eq('show_in_active', True) \
         .order('submitted_at', desc=True) \
         .execute()
 
+
     jobs = jobs_resp.data or []
 
+    # Extract only date parts for display
     for job in jobs:
-        submitted_at_str = job.get('submitted_at')
-        if submitted_at_str:
-            try:
-                dt_obj = datetime.fromisoformat(submitted_at_str.replace('Z', ''))
-
-                job['submitted_at'] = timezone.make_aware(dt_obj)
-
-            except ValueError:
-                job['submitted_at'] = None
+        for date_field in ['submitted_at', 'invoice_date', 'due_date']:
+            date_str = job.get(date_field)
+            if date_str:
+                try:
+                    if 'T' in date_str:
+                        date_part = date_str.split('T')[0]
+                        job[date_field] = date_part
+                    elif ' ' in date_str:
+                        date_part = date_str.split(' ')[0]
+                        job[date_field] = date_part
+                    else:
+                        if len(date_str) >= 10:
+                            job[date_field] = date_str[:10]
+                except:
+                    pass
 
     active_sorts = request.GET.getlist('sort')
 
     if not active_sorts:
         active_sorts = ['newest']
 
+    # Sort by date strings (YYYY-MM-DD format)
     if 'oldest' in active_sorts:
-        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=False)
+        jobs.sort(key=lambda x: x.get('submitted_at') or '', reverse=False)
     elif 'newest' in active_sorts:
-        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=True)
+        jobs.sort(key=lambda x: x.get('submitted_at') or '', reverse=True)
     else:
-        jobs.sort(key=lambda x: x['submitted_at'] if x['submitted_at'] else datetime.min, reverse=True)
+        jobs.sort(key=lambda x: x.get('submitted_at') or '', reverse=True)
 
     if 'user_az' in active_sorts:
         jobs.sort(key=lambda x: x['username'].lower())
@@ -555,23 +565,52 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
         'submission_msg': request.session.pop('submission_msg', None),
     }
 
-    # Fetch jobs
+    # Fetch jobs - Only show jobs that should appear in active view
     jobs_resp = supabase.table('print_jobs') \
         .select('*') \
         .eq('user_id', request.user.id) \
         .neq('status', 'Completed') \
+        .eq('show_in_active', True) \
         .order('submitted_at', desc=True) \
         .execute()
 
+
     jobs = jobs_resp.data or []
+
+    # Extract just the date part from all date fields
+    for job in jobs:
+        for date_field in ['submitted_at', 'invoice_date', 'due_date']:
+            date_str = job.get(date_field)
+            if date_str:
+                try:
+                    # Parse the date string
+                    if 'T' in date_str:
+                        # ISO format: "2025-12-09T15:48:00+08:00" or "2025-12-09T07:48:00Z"
+                        date_part = date_str.split('T')[0]
+                        job[date_field] = date_part
+                    elif ' ' in date_str:
+                        # Space-separated: "2025-12-09 15:48:00"
+                        date_part = date_str.split(' ')[0]
+                        job[date_field] = date_part
+                    else:
+                        # Already just a date or unknown format
+                        # Try to get first 10 chars (YYYY-MM-DD)
+                        if len(date_str) >= 10:
+                            job[date_field] = date_str[:10]
+                except Exception as e:
+                    print(f"Error extracting date from {date_field}: {e}")
+                    # If extraction fails, leave as-is
 
     # FIXED: Use get_unpaid_invoices() instead of old logic
     unpaid_invoices = get_unpaid_invoices(jobs)
     overdue_invoices = [job for job in jobs if job.get('status') == 'Overdue']
 
+    # Get latest job
+    latest_job = jobs[0] if jobs else None
+
     context.update({
         'print_jobs': jobs,
-        'latest_job': jobs[0] if jobs else None,
+        'latest_job': latest_job,
         'unpaid_invoices': unpaid_invoices,
         'overdue_invoices': overdue_invoices,
     })
@@ -656,6 +695,7 @@ def student_dashboard(request: HttpRequest) -> HttpResponse:
                 'due_date': due_date.isoformat(),
                 'submitted_at': now_ph.isoformat(),
                 'is_paid': False,
+                'show_in_active': True,  # NEW: Show in active jobs by default
             }
             supabase.table('print_jobs').insert(job_data).execute()
 
@@ -727,27 +767,27 @@ def get_job_detail(request, job_id):
     if resp.data:
         job = resp.data[0]
 
-        # Add formatted dates for display
+        # Extract only the date part (no time)
         if job.get('invoice_date'):
             try:
-                dt = datetime.fromisoformat(job['invoice_date'].replace('Z', '+00:00'))
-                job['invoice_date_formatted'] = dt.strftime("%b %d, %Y %H:%M")
+                dt = datetime.fromisoformat(job['invoice_date'])  # No replace needed
+                job['invoice_date_formatted'] = dt.strftime("%b %d, %Y")  # Removed %H:%M
             except:
-                job['invoice_date_formatted'] = job['invoice_date']
+                job['invoice_date_formatted'] = job['invoice_date'][:10]  # Just show YYYY-MM-DD
 
         if job.get('due_date'):
             try:
-                dt = datetime.fromisoformat(job['due_date'].replace('Z', '+00:00'))
-                job['due_date_formatted'] = dt.strftime("%b %d, %Y %H:%M")
+                dt = datetime.fromisoformat(job['due_date'])  # No replace needed
+                job['due_date_formatted'] = dt.strftime("%b %d, %Y")  # Removed %H:%M
             except:
-                job['due_date_formatted'] = job['due_date']
+                job['due_date_formatted'] = job['due_date'][:10]  # Just show YYYY-MM-DD
 
         if job.get('submitted_at'):
             try:
-                dt = datetime.fromisoformat(job['submitted_at'].replace('Z', '+00:00'))
-                job['submitted_at_formatted'] = dt.strftime("%b %d, %Y %H:%M")
+                dt = datetime.fromisoformat(job['submitted_at'])  # No replace needed
+                job['submitted_at_formatted'] = dt.strftime("%b %d, %Y")  # Removed %H:%M
             except:
-                job['submitted_at_formatted'] = job['submitted_at']
+                job['submitted_at_formatted'] = job['submitted_at'][:10]  # Just show YYYY-MM-DD
 
         # Use the shared price breakdown function
         breakdown = calculate_price_breakdown(job)
@@ -764,13 +804,30 @@ def view_invoice(request, job_id):
         .select('*') \
         .eq('id', job_id) \
         .eq('user_id', request.user.id) \
-        .execute()
+        .execute()  # NO filter for show_in_active
 
     if not job_resp.data:
         messages.error(request, "Invoice not found")
         return redirect('student_dashboard')
 
     job = job_resp.data[0]
+
+    # Extract only date parts for display
+    for date_field in ['submitted_at', 'invoice_date', 'due_date']:
+        date_str = job.get(date_field)
+        if date_str:
+            try:
+                if 'T' in date_str:
+                    date_part = date_str.split('T')[0]
+                    job[date_field] = date_part
+                elif ' ' in date_str:
+                    date_part = date_str.split(' ')[0]
+                    job[date_field] = date_part
+                else:
+                    if len(date_str) >= 10:
+                        job[date_field] = date_str[:10]
+            except:
+                pass
 
     can_print, print_message = check_print_eligibility(job)
 
@@ -790,9 +847,28 @@ def invoice_list(request):
         .select('*') \
         .eq('user_id', request.user.id) \
         .order('invoice_date', desc=True) \
-        .execute()
+        .execute()  # NO filter for show_in_active - show ALL invoices
 
     invoices = invoices_resp.data or []
+
+    # Extract just the date part from all date fields
+    for invoice in invoices:
+        for date_field in ['invoice_date', 'due_date', 'submitted_at']:
+            date_str = invoice.get(date_field)
+            if date_str:
+                try:
+                    # Parse the date string
+                    if 'T' in date_str:
+                        date_part = date_str.split('T')[0]
+                        invoice[date_field] = date_part
+                    elif ' ' in date_str:
+                        date_part = date_str.split(' ')[0]
+                        invoice[date_field] = date_part
+                    else:
+                        if len(date_str) >= 10:
+                            invoice[date_field] = date_str[:10]
+                except Exception as e:
+                    print(f"Error extracting date from {date_field}: {e}")
 
     # FIXED: Use get_unpaid_invoices() for accurate statistics
     stats = {
@@ -926,7 +1002,7 @@ def check_print_status(request, job_id):
 
 @login_required
 def student_delete_job(request):
-    """Allows student to remove a job from history ONLY if it is Cancelled"""
+    """Allows student to remove a job from active jobs ONLY if it is Cancelled"""
     if request.method == "POST":
         job_id = request.POST.get("job_id")
 
@@ -942,12 +1018,14 @@ def student_delete_job(request):
 
             # 2. STRICT CHECK: Must be 'Cancelled'
             if job.get('status') == 'Cancelled':
-                # Delete Record (Files should already be gone from cancel action)
-                supabase.table('print_jobs').delete().eq('id', job_id).execute()
+                # Hide from active jobs but keep in database
+                supabase.table('print_jobs').update({
+                    'show_in_active': False  # Hide from active view
+                }).eq('id', job_id).execute()
 
-                request.session['cancel_msg'] = f"Removed '{job['file_name']}' from history."
+                request.session['cancel_msg'] = f"Removed '{job['file_name']}' from active jobs. It will still appear in your invoices."
             else:
-                messages.error(request, "Only cancelled jobs can be deleted.")
+                messages.error(request, "Only cancelled jobs can be removed from active jobs.")
 
     return redirect('student_dashboard')
 
@@ -1023,6 +1101,24 @@ def print_job_history(request):
 
     completed_jobs = jobs_resp.data or []
 
+    # Extract just the date part
+    for job in completed_jobs:
+        for date_field in ['submitted_at', 'invoice_date', 'due_date']:
+            date_str = job.get(date_field)
+            if date_str:
+                try:
+                    if 'T' in date_str:
+                        date_part = date_str.split('T')[0]
+                        job[date_field] = date_part
+                    elif ' ' in date_str:
+                        date_part = date_str.split(' ')[0]
+                        job[date_field] = date_part
+                    else:
+                        if len(date_str) >= 10:
+                            job[date_field] = date_str[:10]
+                except:
+                    pass
+
     return render(request, 'subtemplates/print_job_history.html', {
         'completed_jobs': completed_jobs
     })
@@ -1039,6 +1135,24 @@ def staff_job_history(request):
         .execute()
 
     completed_jobs = jobs_resp.data or []
+
+    # Extract just the date part
+    for job in completed_jobs:
+        for date_field in ['submitted_at', 'invoice_date', 'due_date']:
+            date_str = job.get(date_field)
+            if date_str:
+                try:
+                    if 'T' in date_str:
+                        date_part = date_str.split('T')[0]
+                        job[date_field] = date_part
+                    elif ' ' in date_str:
+                        date_part = date_str.split(' ')[0]
+                        job[date_field] = date_part
+                    else:
+                        if len(date_str) >= 10:
+                            job[date_field] = date_str[:10]
+                except:
+                    pass
 
     return render(request, 'subtemplates/staff_job_history.html', {
         'completed_jobs': completed_jobs
@@ -1067,143 +1181,6 @@ def send_ready_email(email, filename, is_reminder=False):
         sg.send(message)
     except Exception as e:
         print(f"SendGrid error: {e}")
-
-
-@login_required(login_url='login')
-def weekly_overview_report(request):
-    """Display a line chart of total print jobs for each day of the week with week navigation"""
-    if not request.user.is_staff:
-        return redirect('student_dashboard')
-
-    # Get timezone
-    ph_tz = pytz.timezone('Asia/Manila')
-    now_ph = datetime.now(ph_tz)
-
-    # Get week offset from query parameter (default: 0 = current week)
-    try:
-        week_offset = int(request.GET.get('week', 0))
-    except ValueError:
-        week_offset = 0
-
-    # Calculate the target week
-    target_date = now_ph + timedelta(weeks=week_offset)
-
-    # Calculate date range for the target week (Monday to Sunday)
-    start_of_week = target_date - timedelta(days=target_date.weekday())  # Monday
-    end_of_week = start_of_week + timedelta(days=6)  # Sunday
-
-    # Adjust to get full week from Monday 00:00 to Sunday 23:59
-    start_date = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_date = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
-
-    # Query print jobs from this week (all statuses, not just completed)
-    jobs_resp = supabase.table('print_jobs') \
-        .select('*') \
-        .gte('submitted_at', start_date.isoformat()) \
-        .lte('submitted_at', end_date.isoformat()) \
-        .execute()
-
-    jobs = jobs_resp.data or []
-
-    # Initialize dictionaries with all days of week
-    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    daily_counts = {day: 0 for day in day_names}
-    daily_revenue = {day: 0.0 for day in day_names}
-
-    # Count jobs and revenue per day
-    for job in jobs:
-        submitted_at_str = job.get('submitted_at')
-        if submitted_at_str:
-            try:
-                # Parse the date
-                dt_obj = datetime.fromisoformat(submitted_at_str.replace('Z', '+00:00'))
-                job_time_ph = dt_obj.astimezone(ph_tz)
-
-                # Get day of week (0=Monday, 6=Sunday)
-                day_index = job_time_ph.weekday()
-                day_name = day_names[day_index]
-
-                # Count job
-                daily_counts[day_name] += 1
-
-                # Add revenue if job is paid/completed
-                if job.get('is_paid') or job.get('payment_status') == 'Accepted':
-                    try:
-                        cost = float(job.get('total_cost', 0))
-                        daily_revenue[day_name] += cost
-                    except (ValueError, TypeError):
-                        pass
-
-            except Exception as e:
-                print(f"Error processing job date {submitted_at_str}: {e}")
-
-    # Prepare data for the chart
-    chart_labels = list(daily_counts.keys())
-    chart_data = list(daily_counts.values())
-
-    # Prepare revenue data
-    revenue_data = [round(revenue, 2) for revenue in daily_revenue.values()]
-
-    # Calculate statistics
-    total_jobs = sum(chart_data)
-    average_jobs = total_jobs / 7 if total_jobs > 0 else 0
-
-    # Find busiest day
-    if total_jobs > 0:
-        busiest_day = max(daily_counts, key=daily_counts.get)
-        busiest_count = daily_counts[busiest_day]
-        busiest_revenue = daily_revenue[busiest_day]
-    else:
-        busiest_day = "No data"
-        busiest_count = 0
-        busiest_revenue = 0
-
-    # Find least busy day
-    if total_jobs > 0:
-        least_busy_day = min(daily_counts, key=daily_counts.get)
-        least_busy_count = daily_counts[least_busy_day]
-        least_busy_revenue = daily_revenue[least_busy_day]
-    else:
-        least_busy_day = "No data"
-        least_busy_count = 0
-        least_busy_revenue = 0
-
-    # Calculate total revenue for the week
-    total_revenue = sum(daily_revenue.values())
-
-    # Calculate previous and next week offsets
-    prev_week = week_offset - 1
-    next_week = week_offset + 1
-
-    # Check if current week (offset 0)
-    is_current_week = week_offset == 0
-
-    context = {
-        'chart_labels': chart_labels,
-        'chart_data': chart_data,
-        'revenue_data': revenue_data,
-        'total_jobs': total_jobs,
-        'total_revenue': f"₱{total_revenue:,.2f}" if total_revenue > 0 else "No Revenue",
-        'average_jobs': round(average_jobs, 1),
-        'busiest_day': busiest_day,
-        'busiest_count': busiest_count,
-        'busiest_revenue': f"₱{busiest_revenue:,.2f}" if busiest_revenue > 0 else "No Revenue",
-        'least_busy_day': least_busy_day,
-        'least_busy_count': least_busy_count,
-        'least_busy_revenue': f"₱{least_busy_revenue:,.2f}" if least_busy_revenue > 0 else "No Revenue",
-        'week_start': start_date.strftime('%B %d, %Y'),
-        'week_end': end_date.strftime('%B %d, %Y'),
-        'week_number': start_date.isocalendar()[1],  # ISO week number
-        'date_range': f"{start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}",
-        'week_offset': week_offset,
-        'prev_week': prev_week,
-        'next_week': next_week,
-        'is_current_week': is_current_week,
-        'current_year': start_date.year,
-    }
-
-    return render(request, 'subtemplates/weekly_overview.html', context)
-
 
 @login_required
 def download_receipt(request, job_id):

@@ -11,8 +11,7 @@
 {% block sidebar_links %}
 <a href="{% url 'staff_dashboard' %}">Print Job Queue</a>
 <a href="{% url 'staff_job_history' %}" class="active">Completed Print Jobs</a>
-<a href="{% url 'revenue_dashboard' %}">Revenue Reports</a>
-<a href="{% url 'weekly_overview_report' %}">Weekly Overview</a>
+<a href="{% url 'analytics_dashboard' %}">Analytics Dashboard</a>
 <a href="#" onclick="openTermsModal()">Terms and Conditions</a>
 {% endblock %}
 
@@ -39,7 +38,7 @@
                             <strong>{{ job.file_name }}</strong>
                             <div class="history-meta">
                                 <span class="meta-user">{{ job.username }}</span>
-                                <span> • {{ job.submitted_at|date:"M d, H:i" }}</span>
+                                <span> • {{ job.submitted_at|slice:":10" }}</span>
                             </div>
                         </div>
                         <span class="badge badge-completed">COMPLETED</span>
@@ -80,8 +79,10 @@
         fetch(`/api/job/${jobId}/`)
             .then(r => r.json())
             .then(job => {
+                // Format date to show only date, no time
                 const dateStr = new Date(job.submitted_at).toLocaleString('en-US', {
-                    month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    month: 'short', day: '2-digit', year: 'numeric'
+                    // Removed hour and minute
                 });
 
                 contentDiv.innerHTML = `

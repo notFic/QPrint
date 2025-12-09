@@ -1,0 +1,446 @@
+/* Analytics Dashboard Specific Styles */
+
+.period-type-selector {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.period-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.period-tab {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.period-tab:hover {
+    background: #e5e7eb;
+}
+
+.period-tab.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.period-quick-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.quick-stat {
+    text-align: center;
+}
+
+.quick-stat .stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.quick-stat .stat-value {
+    font-weight: 600;
+    color: #15803d;
+    font-size: 1rem;
+}
+
+/* Period Navigation */
+.period-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.period-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.nav-btn {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.nav-btn:hover:not(.disabled) {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+    text-decoration: none;
+}
+
+.nav-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.nav-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.current-period-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none;
+}
+
+.current-period-btn:hover {
+    background: #2563eb;
+    text-decoration: none;
+}
+
+.period-display {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.period-badge {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.data-range-info {
+    font-size: 0.75rem;
+    color: #6b7280;
+    display: inline-block;
+    cursor: help;
+}
+
+/* Period Selector */
+.period-selector-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.period-select-label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.period-select {
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    font-size: 0.875rem;
+    color: #374151;
+    min-width: 200px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.period-select:hover {
+    border-color: #9ca3af;
+}
+
+.period-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.period-selector-container .data-range-info {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Revenue Summary Card */
+.revenue-summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 30px;
+    color: white;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.revenue-main {
+    margin-bottom: 25px;
+}
+
+.revenue-main h3 {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.revenue-value {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.revenue-change {
+    font-size: 0.9rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.revenue-change.positive {
+    background: rgba(34, 197, 94, 0.2);
+    color: #bbf7d0;
+}
+
+.revenue-change.negative {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fecaca;
+}
+
+.revenue-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+.breakdown-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.breakdown-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 5px;
+}
+
+.breakdown-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Charts Container */
+.charts-container {
+    margin-top: 30px;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 30px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.chart-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.period-range {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+.no-data-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+    font-size: 1.1rem;
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.no-data-message h3 {
+    margin-bottom: 10px;
+    color: #374151;
+}
+
+.no-data-message p {
+    margin-bottom: 10px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 20px;
+}
+
+.tablink {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+    margin-right: 10px;
+    transition: all 0.3s;
+}
+
+.tablink:hover {
+    color: #3b82f6;
+}
+
+.tablink.active {
+    color: #3b82f6;
+    border-bottom: 2px solid #3b82f6;
+    font-weight: 600;
+}
+
+.tabcontent {
+    display: none;
+}
+
+.tabcontent.active {
+    display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .period-type-selector {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .period-quick-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .chart-wrapper {
+        height: 300px;
+    }
+
+    .revenue-breakdown {
+        grid-template-columns: 1fr;
+    }
+
+    .period-display {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .period-selector-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .period-selector-container .data-range-info {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tabs {
+        flex-wrap: wrap;
+    }
+
+    .tablink {
+        padding: 8px 12px;
+        font-size: 0.875rem;
+    }
+
+    .period-tabs {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .period-tab {
+        text-align: center;
+    }
+
+    .revenue-value {
+        font-size: 2.5rem;
+    }
+
+    .period-navigation {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .period-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
