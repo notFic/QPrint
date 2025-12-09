@@ -90,7 +90,7 @@
 
       <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center;">
         <a href="{% url 'print_job_history' %}" class="secondary-btn" style="width: 100%; display: block; text-align: center; margin: 0;">
-            View Print Job History
+            View Completed Print Jobs
         </a>
       </div>
     </div>
@@ -214,7 +214,7 @@
             <select id="paper_size" name="paper_size" required {% if overdue_invoices %}disabled{% endif %}>
               <option value="" data-price="0">Select size</option>
               <option value="A4" data-price="0">A4 (No extra charge)</option>
-              <option value="Letter" data-price="0">Letter (No extra charge)</option>
+              <option value="Letter" data-price="0">Short (No extra charge)</option>
               <option value="Long" data-price="1">Long (+₱1.00)</option>
             </select>
           </div>
