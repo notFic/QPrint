@@ -520,30 +520,26 @@ def staff_delete_job(request):
     if request.method == "POST" and request.user.is_staff:
         job_id = request.POST.get("job_id")
 
+        
         job_resp = supabase.table('print_jobs').select('*').eq('id', job_id).execute()
 
-        if job_resp.data:
-            job = job_resp.data[0]
-
-            if job.get('is_paid') == True or job.get('status') == 'Completed':
-                messages.error(request, "Cannot delete a Paid or Completed job. Archive it instead.")
-                return redirect('staff_dashboard')
-            try:
-                file_path_parts = job['file_url'].split('/')[-3:]
-                file_path = "/".join(file_path_parts)
-                supabase.storage.from_(bucket).remove([file_path])
-
-                if job.get('payment_proof_url'):
-                    proof_parts = job['payment_proof_url'].split('/')[-3:]
-                    proof_path = "/".join(proof_parts)
-                    supabase.storage.from_(bucket).remove([proof_path])
-            except Exception as e:
-                print(f"Error deleting file: {e}")
-
-            supabase.table('print_jobs').delete().eq('id', job_id).execute()
-
-        else:
+        if not job_resp.data:
             messages.error(request, "Job not found.")
+            return redirect('staff_dashboard')
+
+        job = job_resp.data[0]
+
+        
+        if job.get('is_paid') is True or job.get('status') == 'Completed':
+            messages.error(request, "Cannot remove a Paid or Completed job. Archive it instead.")
+            return redirect('staff_dashboard')
+
+        
+        supabase.table('print_jobs').update({
+            'show_in_active': False  
+        }).eq('id', job_id).execute()
+
+        messages.success(request, f"Job '{job.get('file_name')}' has been removed.")
 
     return redirect('staff_dashboard')
 
