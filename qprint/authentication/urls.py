@@ -14,7 +14,7 @@ urlpatterns = [
     path('api/job/<uuid:job_id>/', views.get_job_detail, name='job_detail'),
     path("staff/update-payment/", views.staff_update_payment, name="staff_update_payment"),
     path("staff/confirm-job/", views.staff_confirm_job, name="staff_confirm_job"),
-    path('payments/', include('payments.urls')),
+    path('payments/', include('qprint.payments.urls')),
     path('staff/delete-job/', views.staff_delete_job, name='staff_delete_job'),
     path('student/delete-job/', views.student_delete_job, name='student_delete_job'),
     path('staff-complete-job/', views.staff_complete_job, name='staff_complete_job'),

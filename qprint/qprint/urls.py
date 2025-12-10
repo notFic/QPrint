@@ -19,6 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('authentication.urls')),
-    path('payments/', include('payments.urls')),
+    path('', include('qprint.authentication.urls')),
+    path('payments/', include('qprint.payments.urls')),
 ]

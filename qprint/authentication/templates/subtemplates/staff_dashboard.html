@@ -55,8 +55,8 @@
                 <td class="filename-cell">
                     <div class="file-wrapper">
                         <button type="button"
-                                class="btn-icon-delete {% if job.payment_status == 'Accepted' %}disabled-x{% endif %}"
-                                {% if job.payment_status == 'Accepted' %}disabled{% endif %}
+                                class="btn-icon-delete {% if job.payment_status == 'Accepted' or 'Verifying' %}disabled-x{% endif %}"
+                                {% if job.payment_status == 'Accepted' or job.payment_status == 'Verifying' %}disabled{% endif %}
                                 onclick="openDeleteModal('{{ job.id }}', '{{ job.file_name|escapejs }}', '{{ job.username|escapejs }}')">
                             ✕
                         </button>
